@@ -12,6 +12,14 @@ class ModelEnum(Enum):
     KAN = 'kan'
     BASIC = 'basic'
 
+input_dimensions = {
+    'images': 2,
+}
+
+output_dimensions = {
+    'images': 3,
+}
+
 def parse_args():
     parser = ArgumentParser(description='Process some integers.')
     parser.add_argument('--data',
@@ -112,12 +120,15 @@ def get_model(args):
         #     model = KAN()
         case ModelEnum.BASIC.value:
             from models.basic.basic import Basic
-            model = Basic()
+            model = Basic(input_dimensions[args.data], output_dimensions[args.data])
         case _:
             logger.error(f"Model {args.model} not recognized")
             raise ValueError(f"Model {args.model} not recognized")
 
     return model
+
+def get_dataloaders(args):
+
 
 def main():
     args = parse_args()
