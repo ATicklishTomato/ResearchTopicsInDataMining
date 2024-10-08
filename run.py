@@ -26,55 +26,58 @@ def parse_args():
                         type=str,
                         choices=['images'],
                         default='images',
-                        help='Type of data to train and test on')
+                        help='Type of data to train and test on. Default is images')
     parser.add_argument('--model',
                         type=str,
                         choices=[model.value for model in ModelEnum],
                         default='basic',
                         help='Type of model to use. Options are for SIREN, Multiplicative Filter Networks, ' +
-                             'Fourier Filter Banks, Kolmogorov-Arnold-Moser, and a basic coordinate-MLP, respectively')
+                             'Fourier Filter Banks, Kolmogorov-Arnold Networks, and a basic coordinate-MLP, ' +
+                             'respectively. Default is basic')
     parser.add_argument('--epochs',
                         type=int,
                         default=100,
-                        help='Number of epochs to train for')
+                        help='Number of epochs to train for. Default is 100')
     parser.add_argument('--batch_size',
                         type=int,
                         default=64,
-                        help='Batch size for training')
+                        help='Batch size for training. Default is 64')
     parser.add_argument('--lr',
                         type=float,
                         default=1e-3,
-                        help='Learning rate for training')
+                        help='Learning rate for training. Default is 1e-3')
     parser.add_argument('--seed',
                         type=int,
                         default=42,
-                        help='Seed for random number generation')
+                        help='Seed for random number generation. Default is 42')
     parser.add_argument('--device',
                         type=str,
                         default='cuda',
-                        help='PyTorch device to train on')
+                        help='PyTorch device to train on. Default is cuda')
     parser.add_argument('--verbose',
                         type=int,
                         default=logging.INFO,
                         choices=[logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR],
-                        help='Verbosity level for logging. Options are for DEBUG, INFO, WARNING, and ERROR, respectively')
+                        help='Verbosity level for logging. Options are for DEBUG, INFO, WARNING, and ERROR, ' +
+                             'respectively. Default is INFO')
     parser.add_argument('--save',
                         action='store_true',
-                        help='Save the model and optimizer state_dicts (if applicable) after training')
+                        help='Save the model and optimizer state_dicts (if applicable) after training. ' +
+                             'Default is False')
     parser.add_argument('--load',
                         action='store_true',
                         help='Load the stored model and optimizer state_dicts (if applicable) ' +
-                             'before training and skip training')
+                             'before training and skip training. Default is False')
     parser.add_argument('--save_dir',
                         type=str,
                         default='saved_models',
-                        help='Directory to save models in')
+                        help='Directory to save models in. Default is saved_models')
     parser.add_argument('--skip_train',
                         action='store_true',
-                        help='Skip training and only evaluate the model')
+                        help='Skip training and only evaluate the model. Default is False')
     parser.add_argument('--skip_test',
                         action='store_true',
-                        help='Skip testing and only train the model')
+                        help='Skip testing and only train the model. Default is False')
     return parser.parse_args()
 
 def validate_requirements():
@@ -128,7 +131,7 @@ def get_model(args):
     return model
 
 def get_dataloaders(args):
-
+    pass
 
 def main():
     args = parse_args()
