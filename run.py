@@ -1,8 +1,16 @@
 import sys
 from argparse import ArgumentParser
 from enum import Enum
+
+import torch
+
+from framework.dataloader_manager import get_dataloader
 import subprocess
 import logging
+
+from framework.test import test
+from framework.train import train
+
 logger = logging.getLogger(__name__)
 
 class ModelEnum(Enum):
@@ -17,7 +25,7 @@ input_dimensions = {
 }
 
 output_dimensions = {
-    'images': 3,
+    'images': 1,
 }
 
 def parse_args():
@@ -130,9 +138,6 @@ def get_model(args):
 
     return model
 
-def get_dataloaders(args):
-    pass
-
 def main():
     args = parse_args()
     logging.basicConfig(filename='run.log',
@@ -147,10 +152,30 @@ def main():
 
     logger.debug(f"Arguments: {args}")
 
+    logger.info("Loading model")
     model = get_model(args)
+    if args.load:
+        model.load_state_dict(torch.load(f"{args.save_dir}/{args.model}.pt"))
+    logger.info("Model loaded")
+
+    dataloaders = get_dataloader(args)
+
+    logger.debug(f"Dataloaders: {dataloaders}")
+
+    if not args.skip_train:
+        model = train(model, args.data, dataloaders['train'], dataloaders['val'], args.epochs, args.lr, args.device, args.verbose)
+
+    if args.save:
+        logger.info("Saving model")
+        torch.save(model.state_dict(), f"{args.save_dir}/{args.model}.pt")
+        logger.info("Model saved")
 
 
-    # TODO: Do training and testing if applicable
+    if not args.skip_test:
+        test(model, args.data, dataloaders['test'], args.device, args.verbose)
+
+    logger.info("Run complete. Logs saved in run.log")
+
 
 
 if __name__ == '__main__':

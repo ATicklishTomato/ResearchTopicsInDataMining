@@ -1,9 +1,10 @@
+from collections.abc import Iterable
 import logging
 import torch
 
 logger = logging.getLogger(__name__)
 
-def train(model, train_dataloader, val_dataloader, epochs, lr, device, log_level):
+def train(model, data, train_dataloader, val_dataloader, epochs, lr, device, log_level):
     logger.setLevel(log_level)
     logger.info(f"Training {model.__class__.__name__}")
 
@@ -23,18 +24,21 @@ def train(model, train_dataloader, val_dataloader, epochs, lr, device, log_level
             optimizer.step()
             logger.debug(f"Batch {i + 1}, Loss: {loss.item()}")
 
-        correct = 0
-        total = 0
-        model.eval()
-        with torch.no_grad():
-            for x, y in val_dataloader:
-                x, y = x.to(device), y.to(device)
-                y_pred = model(x)
-                _, predicted = torch.max(y_pred.data, 1)
-                total += y.size(0)
-                correct += (predicted == y).sum().item()
-        accuracy = correct / total
-        logger.info(f"Epoch {epoch + 1}, Accuracy: {accuracy}")
+        if isinstance(val_dataloader, Iterable) and data == "images":
+            model.eval()
+            with torch.no_grad():
+                for x, y in val_dataloader:
+                    x, y = x.to(device), y.to(device)
+                    y_pred = model(x)
+
+                    fig, axes = plt.subplots(1, 2)
+                    axes[0].imshow(y_pred.view(256, 256).cpu().numpy())
+                    axes[0].set_title("Prediction")
+                    axes[0].axis("off")
+                    axes[1].imshow(y.view(256, 256).cpu().numpy())
+                    axes[1].set_title("Ground truth")
+                    axes[1].axis("off")
+                    plt.show()
 
     logger.info(f"Training complete")
 
