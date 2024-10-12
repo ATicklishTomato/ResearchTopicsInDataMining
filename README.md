@@ -19,9 +19,9 @@ options:
   --model {siren,mfn,fourier,kan,basic}
                         Type of model to use. Options are for SIREN, Multiplicative Filter Networks, Fourier Filter Banks, Kolmogorov-Arnold Networks, and a basic coordinate-MLP,  
                         respectively. Default is basic
-  --epochs EPOCHS       Number of epochs to train for. Default is 100
+  --epochs EPOCHS       Number of epochs to train for. Default is 1001
   --batch_size BATCH_SIZE
-                        Batch size for training. Default is 64
+                        Batch size for training. Default is 1
   --lr LR               Learning rate for training. Default is 1e-3
   --seed SEED           Seed for random number generation. Default is 42
   --device DEVICE       PyTorch device to train on. Default is cuda
@@ -30,8 +30,22 @@ options:
   --save                Save the model and optimizer state_dicts (if applicable) after training. Default is False
   --load                Load the stored model and optimizer state_dicts (if applicable) before training and skip training. Default is False
   --save_dir SAVE_DIR   Directory to save models in. Default is saved_models
+  --experiment_name     Results for a training run will be saved under `.logs/{experiment_name}`.
   --skip_train          Skip training and only evaluate the model. Default is False
   --skip_test           Skip testing and only train the model. Default is False
+```
+
+### SIREN
+To train the SIREN model on image data, use:
+```
+python .\run.py --model siren --skip_test
+```
+
+## Analyzing results
+The training loop creates model summaries every couple hundred epochs.
+This summary can be viewed using tensorboard, with the command:
+```
+tensorboard --logdir=./logs
 ```
 
 ## Authors

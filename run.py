@@ -1,4 +1,5 @@
 import sys
+import os
 from argparse import ArgumentParser
 from enum import Enum
 
@@ -44,12 +45,12 @@ def parse_args():
                              'respectively. Default is basic')
     parser.add_argument('--epochs',
                         type=int,
-                        default=100,
-                        help='Number of epochs to train for. Default is 100')
+                        default=1001,
+                        help='Number of epochs to train for. Default is 1001')
     parser.add_argument('--batch_size',
                         type=int,
-                        default=64,
-                        help='Batch size for training. Default is 64')
+                        default=1,
+                        help='Batch size for training. Default is 1')
     parser.add_argument('--lr',
                         type=float,
                         default=1e-3,
@@ -76,10 +77,10 @@ def parse_args():
                         action='store_true',
                         help='Load the stored model and optimizer state_dicts (if applicable) ' +
                              'before training and skip training. Default is False')
-    parser.add_argument('--save_dir',
+    parser.add_argument('--experiment_name',
                         type=str,
-                        default='saved_models',
-                        help='Directory to save models in. Default is saved_models')
+                        default='test',
+                        help='Unique name of this experiment.')
     parser.add_argument('--skip_train',
                         action='store_true',
                         help='Skip training and only evaluate the model. Default is False')
@@ -117,9 +118,6 @@ def validate_requirements():
 
 def get_model(args):
     match args.model:
-        # case ModelEnum.SIREN.value:
-        #     from models.siren import Siren
-        #     model = Siren()
         # case ModelEnum.MFN.value:
         #     from models.mfn import MFN
         #     model = MFN()
@@ -132,17 +130,37 @@ def get_model(args):
         case ModelEnum.BASIC.value:
             from models.basic.basic import Basic
             model = Basic(input_dimensions[args.data], output_dimensions[args.data])
+        case ModelEnum.SIREN.value:
+            from models.siren import SIREN
+            model = SIREN()
         case _:
             logger.error(f"Model {args.model} not recognized")
             raise ValueError(f"Model {args.model} not recognized")
-
     return model
+
+def get_configuration(args):
+    match args.data:
+        case "images":
+            from data.image.loss import mean_squared_error
+            from data.image.summary import summary
+            from functools import partial
+            resolution = (512, 512)
+            return {
+                "loss_fn": mean_squared_error, 
+                "summary_fn": partial(summary, resolution),
+                "resolution": resolution
+            }
+        case _:
+            logger.error(f"Data {args.data} not recognized")
+            raise ValueError(f"Data {args.data} not recognized")
 
 def main():
     args = parse_args()
-    logging.basicConfig(filename='run.log',
-                        level=args.verbose,
-                        format="%(levelname)s %(asctime)s (%(filename)s, %(funcName)s) - %(message)s")
+    logging.basicConfig(
+        filename='run.log',
+        level=args.verbose,
+        format="%(levelname)s %(asctime)s (%(filename)s, %(funcName)s) - %(message)s"
+    )
 
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(args.verbose)
@@ -154,6 +172,8 @@ def main():
 
     logger.info("Loading model")
     model = get_model(args)
+    config = get_configuration(args)
+
     if args.load:
         model.load_state_dict(torch.load(f"{args.save_dir}/{args.model}.pt"))
     logger.info("Model loaded")
@@ -163,20 +183,21 @@ def main():
     logger.debug(f"Dataloaders: {dataloaders}")
 
     if not args.skip_train:
-        model = train(model, args.data, dataloaders['train'], dataloaders['val'], args.epochs, args.lr, args.device, args.verbose)
-
-    if args.save:
-        logger.info("Saving model")
-        torch.save(model.state_dict(), f"{args.save_dir}/{args.model}.pt")
-        logger.info("Model saved")
-
+        train(
+            model=model,
+            train_dataloader=dataloaders['train'],
+            epochs=args.epochs,
+            lr=args.lr,
+            model_dir=os.path.join('./logs', args.experiment_name),
+            config=config,
+            device=args.device,
+            log_level=args.verbose
+        )
 
     if not args.skip_test:
         test(model, args.data, dataloaders['test'], args.device, args.verbose)
 
     logger.info("Run complete. Logs saved in run.log")
-
-
 
 if __name__ == '__main__':
     main()
