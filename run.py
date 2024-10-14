@@ -29,6 +29,10 @@ output_dimensions = {
     'images': 1,
 }
 
+hidden_layers = {
+    'images': [16,16]
+}
+
 def parse_args():
     parser = ArgumentParser(description='Process some integers.')
     parser.add_argument('--data',
@@ -124,9 +128,9 @@ def get_model(args):
         # case ModelEnum.FFB.value:
         #     from models.fourier import FourierFilterBank
         #     model = FourierFilterBank()
-        # case ModelEnum.KAN.value:
-        #     from models.kan import KAN
-        #     model = KAN()
+        case ModelEnum.KAN.value:
+            from models.kan import KAN, KANLinear
+            model = KAN(layers_hidden=[input_dimensions[args.data], *hidden_layers[args.data], output_dimensions[args.data]])
         case ModelEnum.BASIC.value:
             from models.basic.basic import Basic
             model = Basic(input_dimensions[args.data], output_dimensions[args.data])
