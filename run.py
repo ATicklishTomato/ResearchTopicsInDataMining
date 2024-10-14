@@ -141,7 +141,7 @@ def get_model(args):
 def get_configuration(args):
     match args.data:
         case "images":
-            from data.image.loss import mean_squared_error
+            from data.image.metrics import mean_squared_error
             from data.image.summary import summary
             from functools import partial
             resolution = (512, 512)

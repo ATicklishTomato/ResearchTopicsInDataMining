@@ -1,13 +1,14 @@
 import numpy as np
 import torch
-import data.image.utils as utils
-import data.image.differential_operators as differential_operators
 from torch.utils.tensorboard import SummaryWriter
 from torchvision.utils import make_grid
-import skimage.measure
 import cv2
 import cmapy
 import os
+
+import data.image.utils as utils
+import data.image.differential_operators as differential_operators
+import data.image.metrics as metrics
 
 def cond_mkdir(path):
     if not os.path.exists(path):
@@ -57,7 +58,7 @@ def summary(
     writer.add_image(prefix + 'gt_grad', torch.from_numpy(ground_truth_gradient).permute(2, 0, 1), global_step=total_steps)
     writer.add_image(prefix + 'gt_lapl', torch.from_numpy(ground_truth_laplacian).permute(2, 0, 1), global_step=total_steps)
 
-    write_psnr(
+    write_metrics(
         utils.lin2img(model_output['model_out'], image_resolution),
         utils.lin2img(ground_truth['img'], image_resolution), 
         writer, 
@@ -65,7 +66,10 @@ def summary(
         prefix+'img_'
     )
 
-def write_psnr(pred_img, gt_img, writer, iter, prefix):
+def write_metrics(pred_img, gt_img, writer, iter, prefix):
+    """
+    Compute peak signal to noise ratio and structural similarity and write to tensorboard.
+    """
     batch_size = pred_img.shape[0]
 
     pred_img = pred_img.detach().cpu().numpy()
@@ -81,8 +85,8 @@ def write_psnr(pred_img, gt_img, writer, iter, prefix):
 
         trgt = (trgt / 2.) + 0.5
 
-        ssim = skimage.metrics.structural_similarity(im1=p, im2=trgt, channel_axis=-1, data_range=1)
-        psnr = skimage.metrics.peak_signal_noise_ratio(p, trgt, data_range=1)
+        ssim = metrics.structural_similarity(im1=p, im2=trgt, channel_axis=-1, data_range=1)
+        psnr = metrics.peak_signal_noise_ratio(p, trgt, data_range=1)
 
         psnrs.append(psnr)
         ssims.append(ssim)
