@@ -166,5 +166,5 @@ cython_debug/
 logs/*
 
 # Data
-data/*
+data/*.png
 !data/.gitkeep
