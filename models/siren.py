@@ -19,8 +19,8 @@ class SIREN(nn.Module):
         self,
         in_features=2,
         out_features=1,
-        num_hidden_layers=256,
-        hidden_features=3
+        num_hidden_layers=3,
+        hidden_features=256
     ):
         super().__init__()
 

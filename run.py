@@ -36,6 +36,15 @@ def parse_args():
                         choices=['images'],
                         default='images',
                         help='Type of data to train and test on. Default is images')
+    parser.add_argument('--data_point',
+                        type=int,
+                        default=0,
+                        help='Choose the index of the data_point to train on.')
+    parser.add_argument('--data_fidelity',
+                        type=str,
+                        choices=['low', 'medium', 'high'],\
+                        default='low',
+                        help='Choose the fidelity of the data point to train on.')
     parser.add_argument('--model',
                         type=str,
                         choices=[model.value for model in ModelEnum],
@@ -81,12 +90,6 @@ def parse_args():
                         type=str,
                         default='test',
                         help='Unique name of this experiment.')
-    parser.add_argument('--skip_train',
-                        action='store_true',
-                        help='Skip training and only evaluate the model. Default is False')
-    parser.add_argument('--skip_test',
-                        action='store_true',
-                        help='Skip testing and only train the model. Default is False')
     return parser.parse_args()
 
 def validate_requirements():
@@ -116,7 +119,7 @@ def validate_requirements():
         exit(1)
     logger.info("All requirements satisfied")
 
-def get_model(args):
+def get_model(args, dataloader):
     match args.model:
         # case ModelEnum.MFN.value:
         #     from models.mfn import MFN
@@ -132,7 +135,8 @@ def get_model(args):
             model = Basic(input_dimensions[args.data], output_dimensions[args.data])
         case ModelEnum.SIREN.value:
             from models.siren import SIREN
-            model = SIREN()
+            # Initialize the model with out_features matching the input image channel dimension
+            model = SIREN(out_features=dataloader.dataset.dataset.img_channels)
         case _:
             logger.error(f"Model {args.model} not recognized")
             raise ValueError(f"Model {args.model} not recognized")
@@ -141,10 +145,10 @@ def get_model(args):
 def get_configuration(args):
     match args.data:
         case "images":
-            from data.image.metrics import mean_squared_error
-            from data.image.summary import summary
+            from data.images.metrics import mean_squared_error
+            from data.images.summary import summary
             from functools import partial
-            resolution = (512, 512)
+            resolution = (500, 500)
             return {
                 "loss_fn": mean_squared_error, 
                 "summary_fn": partial(summary, resolution),
@@ -170,32 +174,28 @@ def main():
 
     logger.debug(f"Arguments: {args}")
 
+    dataloader = get_dataloader(args)
+
+    logger.debug(f"Dataloaders: {dataloader}")
+
     logger.info("Loading model")
-    model = get_model(args)
+    model = get_model(args, dataloader)
     config = get_configuration(args)
 
     if args.load:
         model.load_state_dict(torch.load(f"{args.save_dir}/{args.model}.pt"))
     logger.info("Model loaded")
 
-    dataloaders = get_dataloader(args)
-
-    logger.debug(f"Dataloaders: {dataloaders}")
-
-    if not args.skip_train:
-        train(
-            model=model,
-            train_dataloader=dataloaders['train'],
-            epochs=args.epochs,
-            lr=args.lr,
-            model_dir=os.path.join('./logs', args.experiment_name),
-            config=config,
-            device=args.device,
-            log_level=args.verbose
-        )
-
-    if not args.skip_test:
-        test(model, args.data, dataloaders['test'], args.device, args.verbose)
+    train(
+        model=model,
+        dataloader=dataloader,
+        epochs=args.epochs,
+        lr=args.lr,
+        model_dir=os.path.join('./logs', args.experiment_name),
+        config=config,
+        device=args.device,
+        log_level=args.verbose
+    )
 
     logger.info("Run complete. Logs saved in run.log")
 
