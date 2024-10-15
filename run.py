@@ -122,9 +122,11 @@ def validate_requirements():
 
 def get_model(args):
     match args.model:
-        # case ModelEnum.MFN.value:
-        #     from models.mfn import MFN
-        #     model = MFN()
+        case ModelEnum.MFN.value:
+            from models.mfn import GaborNet
+            model = GaborNet(in_size=2, hidden_size=256, out_size=1, n_layers=3, input_scale=256, weight_scale=1)
+
+
         # case ModelEnum.FFB.value:
         #     from models.fourier import FourierFilterBank
         #     model = FourierFilterBank()
