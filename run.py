@@ -125,9 +125,9 @@ def get_model(args):
         # case ModelEnum.MFN.value:
         #     from models.mfn import MFN
         #     model = MFN()
-        # case ModelEnum.FFB.value:
-        #     from models.fourier import FourierFilterBank
-        #     model = FourierFilterBank()
+        case ModelEnum.FFB.value:
+            from models.NFFB.img.NFFB_2d import NFFB
+            model = NFFB(input_dimensions[args.data], output_dimensions[args.data])
         case ModelEnum.KAN.value:
             from models.kan import KAN, KANLinear
             model = KAN(layers_hidden=[input_dimensions[args.data], *hidden_layers[args.data], output_dimensions[args.data]])

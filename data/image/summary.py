@@ -32,7 +32,7 @@ def summary(
     predicted_img = utils.lin2img(model_output['model_out'], image_resolution)
 
     img_gradient = differential_operators.gradient(model_output['model_out'], model_output['model_in'])
-    img_laplace = differential_operators.laplace(model_output['model_out'], model_output['model_in'])
+    #img_laplace = differential_operators.laplace(model_output['model_out'], model_output['model_in'])
 
     output_vs_gt = torch.cat((ground_truth_img, predicted_img), dim=-1)
     writer.add_image(
@@ -43,8 +43,8 @@ def summary(
 
     predicted_img = utils.rescale_img((predicted_img+1)/2, mode='clamp').permute(0,2,3,1).squeeze(0).detach().cpu().numpy()
     pred_grad = utils.grads2img(utils.lin2img(img_gradient)).permute(1,2,0).squeeze().detach().cpu().numpy()
-    pred_lapl = cv2.cvtColor(cv2.applyColorMap(utils.to_uint8(utils.rescale_img(
-                             utils.lin2img(img_laplace), perc=2).permute(0,2,3,1).squeeze(0).detach().cpu().numpy()), cmapy.cmap('RdBu')), cv2.COLOR_BGR2RGB)
+    # pred_lapl = cv2.cvtColor(cv2.applyColorMap(utils.to_uint8(utils.rescale_img(
+    #                          utils.lin2img(img_laplace), perc=2).permute(0,2,3,1).squeeze(0).detach().cpu().numpy()), cmapy.cmap('RdBu')), cv2.COLOR_BGR2RGB)
 
     ground_truth_img = utils.rescale_img((ground_truth_img+1) / 2, mode='clamp').permute(0, 2, 3, 1).squeeze(0).detach().cpu().numpy()
     ground_truth_gradient = utils.grads2img(utils.lin2img(ground_truth['gradients'])).permute(1, 2, 0).squeeze().detach().cpu().numpy()
@@ -53,7 +53,7 @@ def summary(
 
     writer.add_image(prefix + 'pred_img', torch.from_numpy(predicted_img).permute(2, 0, 1), global_step=total_steps)
     writer.add_image(prefix + 'pred_grad', torch.from_numpy(pred_grad).permute(2, 0, 1), global_step=total_steps)
-    writer.add_image(prefix + 'pred_lapl', torch.from_numpy(pred_lapl).permute(2,0,1), global_step=total_steps)
+    # writer.add_image(prefix + 'pred_lapl', torch.from_numpy(pred_lapl).permute(2,0,1), global_step=total_steps)
     writer.add_image(prefix + 'gt_img', torch.from_numpy(ground_truth_img).permute(2,0,1), global_step=total_steps)
     writer.add_image(prefix + 'gt_grad', torch.from_numpy(ground_truth_gradient).permute(2, 0, 1), global_step=total_steps)
     writer.add_image(prefix + 'gt_lapl', torch.from_numpy(ground_truth_laplacian).permute(2, 0, 1), global_step=total_steps)
