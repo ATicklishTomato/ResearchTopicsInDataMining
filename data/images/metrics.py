@@ -1,7 +1,7 @@
 import numpy as np
 import skimage.measure
-from skimage.metrics import peak_signal_noise_ratio
 from torchmetrics import JaccardIndex
+from torcheval.metrics import PeakSignalNoiseRatio
 from scipy.spatial import cKDTree as KDTree
 
 
@@ -9,6 +9,7 @@ def mean_squared_error(model_output, gt):
     return {'img_loss': ((model_output['model_out'] - gt['img']) ** 2).mean()}
 
 structural_similarity = skimage.metrics.structural_similarity
+peak_signal_noise_ratio = skimage.metrics.peak_signal_noise_ratio
 
 def peak_signal_to_noise_ratio(model_output, gt):
     """Simple wrapper around skimage.metrics.peak_signal_noise_ratio.
@@ -19,7 +20,9 @@ def peak_signal_to_noise_ratio(model_output, gt):
     Returns:
         psnr (float): The Peak Signal to Noise Ratio.
     """
-    return peak_signal_noise_ratio(gt['img'], model_output['model_out'])
+    psnr = PeakSignalNoiseRatio()
+    psnr.update(model_output['model_out'], gt['img'])
+    return psnr.compute().detach().cpu().item()
 
 def intersection_over_union(model_output, gt, n_classes=2):
     """Recommended standard approach for IoU with PyTorch.

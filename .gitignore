@@ -169,3 +169,5 @@ logs/*
 data/*.png
 data/images/reconstruction/files/*
 !data/.gitkeep
+
+wandb.login

@@ -4,6 +4,7 @@ from argparse import ArgumentParser
 from enum import Enum
 
 import torch
+import wandb
 
 from framework.dataloader_manager import get_dataloader
 import subprocess
@@ -104,6 +105,14 @@ def parse_args():
     parser.add_argument('--skip_test',
                         action='store_true',
                         help='Skip testing and only train the model. Default is False')
+    parser.add_argument('--wandb_api_key',
+                        type=str,
+                        default=None,
+                        help='Your personal API key for Weights and Biases. Default is None. Alternatively, you can ' +
+                             'leave this empty and store the key in a file in the project root called "wandb.login". ' +
+                             'This file will be ignored by git. ' +
+                             'NOTE: Make sure to keep this key private and secure. Do not share it or upload it to ' +
+                             'a public repository.')
     return parser.parse_args()
 
 def validate_requirements():
@@ -132,7 +141,6 @@ def validate_requirements():
         logger.warning("Some requirements are missing. Please run 'pip install -r requirements.txt' to install them")
         exit(1)
     logger.info("All requirements satisfied")
-
 
 def get_configuration(args):
     match args.data:
@@ -187,6 +195,34 @@ def main():
     logger.addHandler(console_handler)
     # validate_requirements()
 
+    wandb_config = {
+        "data": args.data,
+        "model": args.model,
+        "epochs": args.epochs,
+        "batch_size": args.batch_size,
+        "lr": args.lr,
+        "seed": args.seed,
+        "device": args.device,
+        "verbose": args.verbose,
+        "save": args.save,
+        "load": args.load
+    }
+
+    use_wandb = True
+
+    if args.wandb_api_key is not None:
+        wandb.login(key=args.wandb_api_key)
+    elif os.path.exists('wandb.login'):
+        with open('wandb.login', 'r') as f:
+            wandb.login(key=f.read())
+    else:
+        logger.warning("Weights and Biases API key not provided. Logging to Weights and Biases will be disabled")
+        use_wandb = False
+
+    if use_wandb:
+        wandb.init(project=args.model, config=wandb_config)
+        logger.info("Weights and Biases initialized")
+
     logger.debug(f"Arguments: {args}")
 
     dataloader = get_dataloader(args)
@@ -203,8 +239,6 @@ def main():
         model.load_state_dict(torch.load(f"{args.save_dir}/{args.model}.pt"))
     logger.info("Model loaded")
 
-    
-
     if not args.skip_train:
         train(
             model=model,
@@ -214,12 +248,23 @@ def main():
             model_dir=os.path.join('./logs', args.experiment_name),
             config=config,
             device=args.device,
-            log_level=args.verbose
+            log_level=args.verbose,
+            use_wandb=use_wandb
         )
 
     if not args.skip_test:
-        test(model, args.data, dataloader, args.device, args.verbose)
+        test(
+            model=model,
+            test_dataloader=dataloader,
+            model_dir=os.path.join('./logs', args.experiment_name),
+            config=config,
+            device=args.device,
+            log_level=args.verbose,
+            use_wandb=use_wandb
+        )
 
+    if use_wandb:
+        wandb.finish()
     logger.info("Run complete. Logs saved in run.log")
 
 if __name__ == '__main__':

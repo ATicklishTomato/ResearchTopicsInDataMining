@@ -16,9 +16,12 @@ Process some integers.
 options:
   -h, --help            show this help message and exit
   --data {images}       Type of data to train and test on. Default is images
+  --data_point DATA_POINT
+                        Choose the index of the data_point to train on.
+  --data_fidelity {low,medium,high}
+                        Choose the fidelity of the data point to train on.
   --model {siren,mfn,fourier,kan,basic}
-                        Type of model to use. Options are for SIREN, Multiplicative Filter Networks, Fourier Filter Banks, Kolmogorov-Arnold Networks, and a basic coordinate-MLP,  
-                        respectively. Default is basic
+                        Type of model to use. Options are for SIREN, Multiplicative Filter Networks, Fourier Filter Banks, Kolmogorov-Arnold Networks, and a basic coordinate-MLP, respectively. Default is basic
   --epochs EPOCHS       Number of epochs to train for. Default is 1001
   --batch_size BATCH_SIZE
                         Batch size for training. Default is 1
@@ -29,10 +32,11 @@ options:
                         Verbosity level for logging. Options are for DEBUG, INFO, WARNING, and ERROR, respectively. Default is INFO
   --save                Save the model and optimizer state_dicts (if applicable) after training. Default is False
   --load                Load the stored model and optimizer state_dicts (if applicable) before training and skip training. Default is False
-  --save_dir SAVE_DIR   Directory to save models in. Default is saved_models
-  --experiment_name     Results for a training run will be saved under `.logs/{experiment_name}`.
-  --skip_train          Skip training and only evaluate the model. Default is False
-  --skip_test           Skip testing and only train the model. Default is False
+  --experiment_name EXPERIMENT_NAME
+                        Unique name of this experiment.
+  --wandb_api_key WANDB_API_KEY
+                        Your personal API key for Weights and Biases. Default is None. Alternatively, you can leave this empty and store the key in a file in the project root called "wandb.login". This file will be ignored   
+                        by git. NOTE: Make sure to keep this key private and secure. Do not share it or upload it to a public repository.
 ```
 
 ### SIREN
