@@ -25,6 +25,10 @@ input_dimensions = {
     'images': 2,
 }
 
+hidden_dimensions = {
+    'images': 16,
+}
+
 output_dimensions = {
     'images': 1,
 }
@@ -32,6 +36,8 @@ output_dimensions = {
 hidden_layers = {
     'images': [16,16]
 }
+
+
 
 def parse_args():
     parser = ArgumentParser(description='Process some integers.')
@@ -124,7 +130,7 @@ def get_model(args):
     match args.model:
         case ModelEnum.MFN.value:
             from models.mfn import GaborNet
-            model = GaborNet(in_size=2, hidden_size=256, out_size=1, n_layers=3, input_scale=256, weight_scale=1)
+            model = GaborNet(in_size=input_dimensions[args.data], hidden_size=hidden_dimensions[args.data], out_size=output_dimensions[args.data], n_layers=3, input_scale=256, weight_scale=1)
 
 
         # case ModelEnum.FFB.value:
