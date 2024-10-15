@@ -1,7 +1,6 @@
 import torch
 from torch import nn
 import numpy as np
-import pdb
 
 class MFNBase(nn.Module):
     def __init__(self, hidden_size, out_size, n_layers, weight_scale, bias=True, output_act=False):
@@ -13,7 +12,6 @@ class MFNBase(nn.Module):
             lin.weight.data.uniform_(-np.sqrt(weight_scale / hidden_size), np.sqrt(weight_scale / hidden_size))
 
     def forward(self, x):
-        # pdb.set_trace()
         x = x["coords"].detach().clone().requires_grad_(True)
         out = self.filters[0](x)
         for i in range(1, len(self.filters)):
@@ -51,12 +49,9 @@ class GaborLayer(nn.Module):
         self.linear.bias.data.uniform_(-np.pi, np.pi)
 
     def forward(self, x):
-        #x = x["coords"]
-        # print("x:", x)
         D = (x ** 2).sum(-1)[..., None] + (self.mu ** 2).sum(-1)[None, :] - 2 * x @ self.mu.T
         y = torch.sin(self.linear(x)) * torch.exp(-0.5 * D * self.gamma[None, :])
         output = {"model_in": x, 'model_out': y}
-        #print(output)
         return y
 
 class GaborNet(MFNBase):
