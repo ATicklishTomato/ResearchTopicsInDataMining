@@ -21,7 +21,7 @@ class FFB_encoder(nn.Module):
     }
         
         network_config =  {
-      "dims" : [ 64, 64, 64],
+      "dims" : [ 64,64, 64, 64],
       "w0": 100.0,
       "w1": 100.0,
       "size_factor": 1

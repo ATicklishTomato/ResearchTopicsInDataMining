@@ -1,6 +1,8 @@
 import framework.utils as utils
 import torch
 from torch.utils.tensorboard import SummaryWriter
+from torchinfo import summary
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from tqdm.autonotebook import tqdm
 import time
 import numpy as np
@@ -37,6 +39,9 @@ def train(
 
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    scheduler = ReduceLROnPlateau(optimizer, factor = 0.5)
+
+    summary(model)
 
     total_steps = 0
     with tqdm(total=len(train_dataloader) * epochs) as pbar:
@@ -85,6 +90,14 @@ def train(
                 optimizer.zero_grad()
                 train_loss.backward()
                 optimizer.step()
+
+                before_lr = optimizer.param_groups[0]["lr"]
+                scheduler.step(train_loss)
+                after_lr = optimizer.param_groups[0]["lr"]
+
+                if before_lr != after_lr:
+                    print("Epoch %d: SGD lr %.4f -> %.4f" % (epoch, before_lr, after_lr))
+                
 
                 pbar.update(1)
 
