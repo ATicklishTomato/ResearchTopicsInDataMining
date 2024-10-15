@@ -13,10 +13,10 @@ class FFB_encoder(nn.Module):
 
         encoding_config = {
       "feat_dim": n_input_dims,
-      "base_resolution": 96,
-      "per_level_scale": 1.5,
-      "base_sigma": 5.0,
-      "exp_sigma": 2.0,
+      "base_resolution": 64,  #FC layers
+      "per_level_scale": 2, #cg
+      "base_sigma": 5.0,      #sigma min
+      "exp_sigma": 2.0,       #cf
       "grid_embedding_std": 0.01
     }
         
