@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 
 def test(model,
          test_dataloader,
-         model_dir: str,
          config: dict,
          device,
          log_level,
@@ -56,8 +55,6 @@ def test(model,
                     wandb.log({
                         "test_image": wandb.Image(fig)
                     })
-                else:
-                    plt.savefig(f"{model_dir}/test_image.png")
                 plt.close(fig)
 
     logger.info("Testing complete")

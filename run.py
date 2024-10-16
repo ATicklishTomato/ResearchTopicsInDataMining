@@ -229,7 +229,6 @@ def main():
         dataloader=dataloader,
         epochs=args.epochs,
         lr=args.lr,
-        model_dir=os.path.join('./logs', args.experiment_name),
         config=config,
         device=args.device,
         log_level=args.verbose,
@@ -239,7 +238,6 @@ def main():
     test(
         model=model,
         test_dataloader=dataloader,
-        model_dir=os.path.join('./logs', args.experiment_name),
         config=config,
         device=args.device,
         log_level=args.verbose,

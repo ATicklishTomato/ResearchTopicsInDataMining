@@ -1,10 +1,11 @@
 import numpy as np
 import torch
-from torch.utils.tensorboard import SummaryWriter
 from torchvision.utils import make_grid
 import cv2
 import cmapy
 import os
+import wandb
+from matplotlib import pyplot as plt
 
 import data.images.utils as utils
 import data.images.differential_operators as differential_operators
@@ -14,11 +15,22 @@ def cond_mkdir(path):
     if not os.path.exists(path):
         os.makedirs(path)
 
+def make_image(tensor, filename, squeeze=True, permute=None):
+    if squeeze:
+        tensor = tensor.squeeze()
+    if permute is not None:
+        tensor = tensor.permute(permute)
+    plt.imshow(tensor.permute(1,2,0).detach().cpu().numpy())
+    plt.axis('off')
+    plt.savefig(os.path.join(wandb.run.dir, filename))
+
+    if wandb.run is not None:
+        wandb.log({filename: wandb.Image(plt)})
+
 def summary(
     image_resolution,
     ground_truth,
-    model_output, 
-    writer: SummaryWriter, 
+    model_output,
     total_steps, 
     prefix='train_'
 ):
@@ -35,11 +47,10 @@ def summary(
     img_laplace = differential_operators.laplace(model_output['model_out'], model_output['model_in'])
 
     output_vs_gt = torch.cat((ground_truth_img, predicted_img), dim=-1)
-    writer.add_image(
-        prefix + 'gt_vs_pred', 
-        make_grid(output_vs_gt, scale_each=False, normalize=True),
-        global_step=total_steps
-    )
+
+    # Make the image to save it to W&B
+    make_image(make_grid(output_vs_gt, scale_each=False, normalize=True), 'gt_vs_pred_epoch_%04d.png' % total_steps,
+               squeeze=False, permute=None)
 
     # Rescale and handle multiple channels for predicted image
     pred_img_vis = utils.rescale_img((predicted_img+1)/2, mode='clamp').permute(0,2,3,1).squeeze(0).detach().cpu().numpy()
@@ -76,24 +87,30 @@ def summary(
     ground_truth_laplacian = cv2.cvtColor(cv2.applyColorMap(utils.to_uint8(utils.rescale_img(
         utils.lin2img(ground_truth['laplace']), perc=2).permute(0, 2, 3, 1).squeeze(0).detach().cpu().numpy()), cmapy.cmap('RdBu')), cv2.COLOR_BGR2RGB)
 
-    # Write images to Tensorboard
-    writer.add_image(prefix + 'pred_img', torch.from_numpy(pred_img_vis).permute(2, 0, 1), global_step=total_steps)
-    writer.add_image(prefix + 'pred_grad', torch.from_numpy(pred_grad).permute(2, 0, 1), global_step=total_steps)
-    writer.add_image(prefix + 'pred_lapl', torch.from_numpy(pred_lapl).permute(2,0,1), global_step=total_steps)
-    writer.add_image(prefix + 'gt_img', torch.from_numpy(ground_truth_img_vis).permute(2,0,1), global_step=total_steps)
-    writer.add_image(prefix + 'gt_grad', torch.from_numpy(ground_truth_gradient).permute(2, 0, 1), global_step=total_steps)
-    writer.add_image(prefix + 'gt_lapl', torch.from_numpy(ground_truth_laplacian).permute(2, 0, 1), global_step=total_steps)
+    # Create images to save to W&B
+    make_image(torch.from_numpy(pred_img_vis), 'pred_img_epoch_%04d.png' % total_steps,
+               squeeze=False, permute=(2, 0, 1))
+    make_image(torch.from_numpy(pred_grad), 'pred_grad_epoch_%04d.png' % total_steps,
+               squeeze=False, permute=(2, 0, 1))
+    make_image(torch.from_numpy(pred_lapl), 'pred_lapl_epoch_%04d.png' % total_steps,
+               squeeze=False, permute=(2, 0, 1))
+    make_image(torch.from_numpy(ground_truth_img_vis), 'gt_img_epoch_%04d.png' % total_steps,
+               squeeze=False, permute=(2, 0, 1))
+    make_image(torch.from_numpy(ground_truth_gradient), 'gt_grad_epoch_%04d.png' % total_steps,
+               squeeze=False, permute=(2, 0, 1))
+    make_image(torch.from_numpy(ground_truth_laplacian), 'gt_lapl_epoch_%04d.png' % total_steps,
+               squeeze=False, permute=(2, 0, 1))
+
 
     write_metrics(
         utils.lin2img(model_output['model_out'], image_resolution),
-        utils.lin2img(ground_truth['img'], image_resolution), 
-        writer, 
+        utils.lin2img(ground_truth['img'], image_resolution),
         total_steps, 
         prefix+'img_'
     )
 
 
-def write_metrics(pred_img, gt_img, writer, iter, prefix):
+def write_metrics(pred_img, gt_img, iter, prefix):
     """
     Compute peak signal to noise ratio and structural similarity for each channel and write to tensorboard.
     """
@@ -128,5 +145,7 @@ def write_metrics(pred_img, gt_img, writer, iter, prefix):
         psnrs.append(np.mean(psnr_channel))
         ssims.append(np.mean(ssim_channel))
 
-    writer.add_scalar(prefix + "psnr", np.mean(psnrs), iter)
-    writer.add_scalar(prefix + "ssim", np.mean(ssims), iter)
+    if wandb.run is not None:
+        wandb.log({prefix + "channel_avg_psnr": np.mean(psnrs),
+                   prefix + "channel_avg_ssim": np.mean(ssims),
+                   'total_steps': iter})

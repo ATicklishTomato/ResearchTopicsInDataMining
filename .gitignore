@@ -170,3 +170,4 @@ data/*.png
 !data/.gitkeep
 
 wandb.login
+wandb/
