@@ -8,9 +8,10 @@ import models.NFFB.hash_encoding as enc
 
 
 class FFB_encoder(nn.Module):
-    def __init__(self, n_input_dims, encoding_config, network_config, bound=1.0, has_out=True):
+    def __init__(
+        self, n_input_dims, encoding_config, network_config, bound=1.0, has_out=True
+    ):
         super().__init__()
-
 
         self.bound = bound
 

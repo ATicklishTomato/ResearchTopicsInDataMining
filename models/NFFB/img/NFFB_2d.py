@@ -51,7 +51,7 @@ class NFFB(nn.Module):
             )
 
         self.relu_activation = nn.ReLU(inplace=True)
-        
+
         logger.info("NFFB model initialized")
 
     @torch.no_grad()
@@ -69,7 +69,7 @@ class NFFB(nn.Module):
             out: (N, 1 or 3), the RGB values
         """
         logger.debug(f"Input shape: {x.shape}")
-        
+
         if isinstance(x, dict):
             coords = x["coords"].clone().detach().requires_grad_(True)
 
@@ -85,7 +85,7 @@ class NFFB(nn.Module):
                 out_feat = self.relu_activation(out_feat)
 
         out_feat = out_feat.clamp(-1.0, 1.0)
-        
+
         logger.debug(f"Output shape: {out_feat.shape}")
 
         return {"model_in": coords, "model_out": out_feat}
