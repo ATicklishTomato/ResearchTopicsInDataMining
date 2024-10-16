@@ -171,3 +171,4 @@ data/images/reconstruction/files/*
 !data/.gitkeep
 
 wandb.login
+wandb/
