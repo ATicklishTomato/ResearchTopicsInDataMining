@@ -5,6 +5,9 @@ import math
 
 from models.NFFB.Sine import Sine, sine_init, first_layer_sine_init
 import models.NFFB.hash_encoding as enc
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class FFB_encoder(nn.Module):
@@ -89,6 +92,8 @@ class FFB_encoder(nn.Module):
         else:
             self.out_dim = sin_dims[-1] * grid_level
 
+        logger.debug("FFB encoder initialized successfully")
+
     ### Initialize the parameters of SIREN branch
     def init_siren(self):
         for layer in range(0, self.num_sin_layers - 1):
@@ -112,7 +117,7 @@ class FFB_encoder(nn.Module):
         in_pos (for grid features) should always be located in [0.0, 1.0]
         x (for SIREN branch) should always be located in [-1.0, 1.0]
         """
-
+        logger.debug(f"Input shape: {in_pos.shape}")
         x = in_pos / self.bound  # to [-1, 1]
         in_pos = (in_pos + self.bound) / (2 * self.bound)  # to [0, 1]
 
@@ -151,7 +156,9 @@ class FFB_encoder(nn.Module):
 
         if self.has_out:
             x = x_out
+            logger.debug(f"Output layer shape: {x.shape}")
         else:
             x = feat_list
+            logger.debug(f"Output list length: {len(x)}")
 
         return x

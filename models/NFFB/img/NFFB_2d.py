@@ -11,6 +11,7 @@ class NFFB(nn.Module):
     def __init__(self, input_dims=2, out_dims=3):
         super().__init__()
 
+        # these should be included in a config file eventually
         encoding_config = {
             "feat_dim": input_dims,
             "base_resolution": 64,  # FC layers
@@ -68,10 +69,11 @@ class NFFB(nn.Module):
         Outputs:
             out: (N, 1 or 3), the RGB values
         """
-        logger.debug(f"Input shape: {x.shape}")
 
         if isinstance(x, dict):
             coords = x["coords"].clone().detach().requires_grad_(True)
+
+        logger.debug(f"Input shape: {coords.shape}")
 
         x = (coords - 0.5) * 2.0
         out_feat = self.xyz_encoder(x)
