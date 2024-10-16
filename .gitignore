@@ -162,5 +162,9 @@ cython_debug/
 .idea/
 .vscode/
 
-data/*
+# Logs
+logs/*
+
+# Data
+data/*.png
 !data/.gitkeep
