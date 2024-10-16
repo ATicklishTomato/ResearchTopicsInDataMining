@@ -119,7 +119,24 @@ def validate_requirements():
         exit(1)
     logger.info("All requirements satisfied")
 
-def get_model(args, dataloader):
+def get_configuration(args):
+    match args.data:
+        case "images":
+            from data.images.metrics import mean_squared_error
+            from data.images.summary import summary
+            from functools import partial
+            resolution = (500, 500)
+            return {
+                "loss_fn": mean_squared_error, 
+                "summary_fn": partial(summary, resolution),
+                "resolution": resolution,
+                "in_features": 2
+            }
+        case _:
+            logger.error(f"Data {args.data} not recognized")
+            raise ValueError(f"Data {args.data} not recognized")
+        
+def get_model(args, dataloader, config):
     match args.model:
         # case ModelEnum.MFN.value:
         #     from models.mfn import MFN
@@ -135,28 +152,11 @@ def get_model(args, dataloader):
             model = Basic(input_dimensions[args.data], output_dimensions[args.data])
         case ModelEnum.SIREN.value:
             from models.siren import SIREN
-            # Initialize the model with out_features matching the input image channel dimension
-            model = SIREN(out_features=dataloader.dataset.dataset.img_channels)
+            model = SIREN(in_features=config["in_features"], out_features=dataloader.dataset.dataset.img_channels)
         case _:
             logger.error(f"Model {args.model} not recognized")
             raise ValueError(f"Model {args.model} not recognized")
     return model
-
-def get_configuration(args):
-    match args.data:
-        case "images":
-            from data.images.metrics import mean_squared_error
-            from data.images.summary import summary
-            from functools import partial
-            resolution = (500, 500)
-            return {
-                "loss_fn": mean_squared_error, 
-                "summary_fn": partial(summary, resolution),
-                "resolution": resolution
-            }
-        case _:
-            logger.error(f"Data {args.data} not recognized")
-            raise ValueError(f"Data {args.data} not recognized")
 
 def main():
     args = parse_args()
@@ -179,8 +179,8 @@ def main():
     logger.debug(f"Dataloaders: {dataloader}")
 
     logger.info("Loading model")
-    model = get_model(args, dataloader)
     config = get_configuration(args)
+    model = get_model(args, dataloader, config)
 
     if args.load:
         model.load_state_dict(torch.load(f"{args.save_dir}/{args.model}.pt"))

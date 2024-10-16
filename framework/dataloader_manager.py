@@ -1,8 +1,9 @@
 import logging
 import os
 
-from framework.image_reconstruction_dataloader import ImageFitting
 from torch.utils.data import DataLoader
+from data.images.reconstruction.dataset import Reconstruction
+from data.images.utils import Implicit2DWrapper
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +24,6 @@ def get_dataloader(args):
             if args.data_point < len(image_files):
                 selected_image = image_files[args.data_point]
                 print(f"Selected image file: {selected_image}")
-
-                from data.images.reconstruction.dataset import Reconstruction
-                from data.images.utils import Implicit2DWrapper
 
                 img_dataset = Reconstruction(
                     path=os.path.join(data_path, selected_image)
