@@ -55,7 +55,7 @@ class SIREN(nn.Module):
         if self.weight_init is not None:
             self.net.apply(self.weight_init)
 
-        logger.info("Basic model initialized")
+        logger.info("SIREN model initialized")
 
     def forward(self, model_input):
         # Enables us to compute gradients w.r.t. coordinates
