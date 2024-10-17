@@ -26,7 +26,7 @@ input_dimensions = {
 }
 
 output_dimensions = {
-    'images': 3,
+    'images': 1,
 }
 
 hidden_dimensions = {
@@ -158,10 +158,10 @@ def get_model(args, dataloader, config):
     match args.model:
         case ModelEnum.MFN.value:
             from models.mfn import GaborNet
-            model = GaborNet(in_size=config["in_features"], hidden_size=config["hidden_dim"], out_size=config["out_features"], n_layers=3, input_scale=256, weight_scale=1)
+            model = GaborNet(in_size=config["in_features"], hidden_size=config["hidden_dim"], out_size=dataloader.dataset.dataset.img_channels, n_layers=3, input_scale=256, weight_scale=1)
         case ModelEnum.KAN.value:
             from models.kan import KAN, KANLinear
-            model = KAN(layers_hidden=[config["in_features"], *config["hidden_layers"], config["out_features"]])
+            model = KAN(layers_hidden=[config["in_features"], *config["hidden_layers"], dataloader.dataset.dataset.img_channels])
         case ModelEnum.BASIC.value:
             from models.basic.basic import Basic
             model = Basic(input_dimensions[args.data], output_dimensions[args.data])
