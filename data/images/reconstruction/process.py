@@ -76,7 +76,7 @@ def plot_gradient_distribution(gradients):
     plt.ylabel('Number of Images')
     plt.show()
 
-if __name__ == "main":
+if __name__ == "__main__":
     """
     This script can be used to seperate your dataset of images based on the fidelity of the images.
     """
