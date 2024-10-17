@@ -6,6 +6,6 @@ from models.mfn import GaborNet
 __all__ = [
     "SIREN",
     "KANLinear",
-    "KAN"
+    "KAN",
     "GaborNet"
 ]

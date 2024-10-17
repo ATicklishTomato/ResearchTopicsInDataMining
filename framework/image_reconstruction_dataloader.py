@@ -16,7 +16,7 @@ class ImageFitting(Dataset):
         logger.setLevel(verbose)
         logger.info(f"Preparing dataloader for image {image}")
         img = get_image_tensor(image, sidelength)
-        self.pixels = img.permute(1, 2, 0).view(-1, 1)
+        self.pixels = self.pixels = img.permute(1, 2, 0).view(-1, img.shape[0])
         self.coords = get_mgrid(sidelength, 2)
         logger.debug(f"Pixels shape: {self.pixels.shape}, Coords shape: {self.coords.shape}")
 
@@ -35,18 +35,19 @@ def get_image_tensor(image, sidelength):
     image: str
     sidelength: int'''
     if image == "":
-        img = Image.fromarray(skimage.data.camera())
+        img = Image.fromarray(skimage.data.camera())  # Load a default grayscale image
     else:
         img = Image.open(image)
 
     # Ensure the image has 3 channels by converting grayscale to RGB if necessary
     if img.mode != 'RGB':
         img = img.convert('RGB')
+
     # Apply transforms: resize, convert to tensor, and normalize (for RGB)
     transform = Compose([
         Resize(sidelength),
         ToTensor(),
-        Normalize(torch.Tensor([0.5]), torch.Tensor([0.5]))
+        Normalize(torch.Tensor([0.5, 0.5, 0.5]), torch.Tensor([0.5, 0.5, 0.5]))  # Normalizing RGB channels
     ])
     return transform(img)
 
