@@ -6,9 +6,9 @@ import cv2
 import cmapy
 import os
 
-import data.image.utils as utils
-import data.image.differential_operators as differential_operators
-import data.image.metrics as metrics
+import data.images.utils as utils
+import data.images.differential_operators as differential_operators
+import data.images.metrics as metrics
 
 def cond_mkdir(path):
     if not os.path.exists(path):

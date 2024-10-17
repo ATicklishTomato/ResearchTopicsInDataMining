@@ -38,13 +38,17 @@ def get_image_tensor(image, sidelength):
         img = Image.fromarray(skimage.data.camera())
     else:
         img = Image.open(image)
+
+    # Ensure the image has 3 channels by converting grayscale to RGB if necessary
+    if img.mode != 'RGB':
+        img = img.convert('RGB')
+    # Apply transforms: resize, convert to tensor, and normalize (for RGB)
     transform = Compose([
         Resize(sidelength),
         ToTensor(),
         Normalize(torch.Tensor([0.5]), torch.Tensor([0.5]))
     ])
-    img = transform(img)
-    return img
+    return transform(img)
 
 
 def get_mgrid(sidelen, dim=2):
