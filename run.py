@@ -168,7 +168,6 @@ def get_model(args, dataloader, config):
         case ModelEnum.KAN.value:
             from models.kan import KAN, KANLinear
             model = KAN(layers_hidden=[config["in_features"], *config["hidden_layers"], dataloader.dataset.dataset.img_channels])
-            model = KAN(layers_hidden=[config["in_features"], *config["hidden_layers"], dataloader.dataset.dataset.img_channels])
         case ModelEnum.BASIC.value:
             from models.basic.basic import Basic
             model = Basic(input_dimensions[args.data], output_dimensions[args.data])
@@ -199,18 +198,12 @@ def main():
     dataloader = get_dataloader(args)
 
     logger.debug(f"Dataloaders: {dataloader}")
-    
-    dataloader = get_dataloader(args)
-    logger.debug(f"Dataloaders: {dataloader}")
-
 
     logger.info("Loading model")
     config = get_configuration(args)
     logger.info("Configuration loaded")
     model = get_model(args, dataloader, config)
     
-    logger.info("Configuration loaded")
-    model = get_model(args, dataloader, config)
 
     if args.load:
         model.load_state_dict(torch.load(f"{args.save_dir}/{args.model}.pt"))
@@ -232,10 +225,8 @@ def main():
 
     if not args.skip_test:
         test(model, args.data, dataloader, args.device, args.verbose)
-        test(model, args.data, dataloader, args.device, args.verbose)
 
     logger.info("Run complete. Logs saved in run.log")
 
 if __name__ == '__main__':
     main()
-x
