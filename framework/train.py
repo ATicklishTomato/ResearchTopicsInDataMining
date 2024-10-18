@@ -1,10 +1,8 @@
-import framework.utils as utils
 import torch
 from tqdm.autonotebook import tqdm
 import time
 import numpy as np
 import os
-import shutil
 import logging
 import wandb
 
@@ -67,23 +65,30 @@ def train(
                                })
 
 
-                if use_wandb:
-                    train_loss = 0.
-                    for loss_name, loss in losses.items():
-                        single_loss = loss.mean()
+                train_loss = 0.
+                for loss_name, loss in losses.items():
+                    single_loss = loss.mean()
+                    if use_wandb:
                         wandb.log({loss_name: single_loss, 'total_steps': total_steps})
-                        train_loss += single_loss
+                    train_loss += single_loss
 
-                    train_losses.append(train_loss.item())
+                train_losses.append(train_loss.item())
+                if use_wandb:
                     wandb.log({'total_loss': train_loss, 'total_steps': total_steps})
 
-                if not total_steps % 500:
+                if not total_steps % 500 and use_wandb:
                     # Make a model summary
                     torch.save(
                         model.state_dict(),
                         os.path.join(wandb.run.dir, 'model_current.pth')
                     )
                     wandb.save(os.path.join(wandb.run.dir, 'model_current.pth'))
+                    config["summary_fn"](ground_truth, model_output, total_steps)
+                elif not total_steps % 500:
+                    torch.save(
+                        model.state_dict(),
+                        './out/model_current.pth'
+                    )
                     config["summary_fn"](ground_truth, model_output, total_steps)
 
                 # Backpropagation
@@ -98,16 +103,20 @@ def train(
 
                 total_steps += 1
 
-        torch.save(
-            model.state_dict(),
-            os.path.join(wandb.run.dir, 'model_final.pth')
-        )
-        wandb.save(os.path.join(wandb.run.dir, 'model_final.pth'))
-        np.savetxt(
-            os.path.join(wandb.run.dir, 'train_losses_final.txt'),
-            np.array(train_losses)
-        )
-        wandb.save(os.path.join(wandb.run.dir, 'train_losses_final.txt'))
+        if use_wandb:
+            torch.save(
+                model.state_dict(),
+                os.path.join(wandb.run.dir, 'model_final.pth')
+            )
+            wandb.save(os.path.join(wandb.run.dir, 'model_final.pth'))
+            np.savetxt(
+                os.path.join(wandb.run.dir, 'train_losses_final.txt'),
+                np.array(train_losses)
+            )
+            wandb.save(os.path.join(wandb.run.dir, 'train_losses_final.txt'))
+        else:
+            torch.save(model.state_dict(), './out/model_final.pth')
+            np.savetxt('./out/train_losses_final.txt', np.array(train_losses))
 
         if use_wandb:
             # On Windows and this doesn't work? Go to Settings -> Update & Security -> For developers

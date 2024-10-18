@@ -22,7 +22,10 @@ def make_image(tensor, filename, squeeze=True, permute=None):
         tensor = tensor.permute(permute)
     plt.imshow(tensor.permute(1,2,0).detach().cpu().numpy())
     plt.axis('off')
-    plt.savefig(os.path.join(wandb.run.dir, filename))
+    if wandb.run is not None:
+        plt.savefig(os.path.join(wandb.run.dir, filename))
+    else:
+        plt.savefig('./out/' + filename)
 
     if wandb.run is not None:
         wandb.log({filename: wandb.Image(plt)})

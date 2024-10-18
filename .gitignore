@@ -172,3 +172,4 @@ data/images/reconstruction/files/*
 
 wandb.login
 wandb/
+out/

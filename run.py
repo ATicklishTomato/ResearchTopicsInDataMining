@@ -222,6 +222,8 @@ def main():
     if use_wandb:
         wandb.init(project=args.model, config=wandb_config)
         logger.info("Weights and Biases initialized")
+    elif not os.path.exists('out'):
+        os.makedirs('out')
 
     logger.debug(f"Arguments: {args}")
 
