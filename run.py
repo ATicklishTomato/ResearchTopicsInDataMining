@@ -12,6 +12,7 @@ import logging
 
 from framework.test import test
 from framework.train import train
+from sweep import execute_sweep
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,10 @@ def parse_args():
                         help='Type of model to use. Options are for SIREN, Multiplicative Filter Networks, ' +
                              'Fourier Filter Banks, Kolmogorov-Arnold Networks, and a basic coordinate-MLP, ' +
                              'respectively. Default is basic')
+    parser.add_argument('--sweep',
+                        action='store_true',
+                        help='Run a hyperparameter sweep. Default is False. Note: This will override ' +
+                        'any arguments passed related to sweep parameters')
     parser.add_argument('--epochs',
                         type=int,
                         default=1001,
@@ -243,6 +248,15 @@ def main():
     if args.load:
         model.load_state_dict(torch.load(f"{args.save_dir}/{args.model}.pt"))
     logger.info("Model loaded")
+
+    if args.sweep and not args.wandb_api_key:
+        logger.error("Hyperparameter sweep requested but Weights and Biases API key not provided. " +
+              "Please provide an API key with the --wandb_api_key argument or in a file called 'wandb.login'")
+        exit(1)
+    elif args.sweep:
+        logger.info("Running hyperparameter sweep, skipping regular training and testing")
+        execute_sweep(model, dataloader, config, args.device, args.verbose)
+        exit(0)
 
     if not args.skip_train:
         train(
