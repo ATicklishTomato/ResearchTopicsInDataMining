@@ -167,6 +167,9 @@ def get_model(args, dataloader, config):
         case ModelEnum.MFN.value:
             from models.mfn import GaborNet
             model = GaborNet(in_size=config["in_features"], hidden_size=config["hidden_dim"], out_size=dataloader.dataset.dataset.img_channels, n_layers=3, input_scale=256, weight_scale=1)
+        case ModelEnum.FFB.value:
+            from models.NFFB.img.NFFB_2d import NFFB
+            model = NFFB(config["in_features"], dataloader.dataset.dataset.img_channels)
         case ModelEnum.KAN.value:
             from models.kan import KAN, KANLinear
             model = KAN(layers_hidden=[config["in_features"], *config["hidden_layers"], dataloader.dataset.dataset.img_channels])
@@ -235,7 +238,7 @@ def main():
     config = get_configuration(args)
     logger.info("Configuration loaded")
     model = get_model(args, dataloader, config)
-    
+
 
     if args.load:
         model.load_state_dict(torch.load(f"{args.save_dir}/{args.model}.pt"))
