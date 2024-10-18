@@ -41,46 +41,20 @@ def summary(
         global_step=total_steps
     )
 
-    # Rescale and handle multiple channels for predicted image
-    pred_img_vis = utils.rescale_img((predicted_img+1)/2, mode='clamp').permute(0,2,3,1).squeeze(0).detach().cpu().numpy()
-    if pred_img_vis.shape[-1] > 3:  # If there are more than 3 channels, take the first 3 for visualization
-        pred_img_vis = pred_img_vis[:, :, :3]
-        
-    img = utils.to_uint8(
-        utils.rescale_img(
-            utils.lin2img(img_laplace), 
-            perc=2
-        ).permute(0,2,3,1).squeeze(0).detach().cpu().numpy()
-    )
-    
-    print(img.shape)
-
+    predicted_img = utils.rescale_img((predicted_img+1)/2, mode='clamp').permute(0,2,3,1).squeeze(0).detach().cpu().numpy()
     pred_grad = utils.grads2img(utils.lin2img(img_gradient)).permute(1,2,0).squeeze().detach().cpu().numpy()
-    pred_lapl = cv2.cvtColor(
-        cv2.applyColorMap(
-            utils.to_uint8(
-                utils.rescale_img(
-                    utils.lin2img(img_laplace), 
-                    perc=2
-                ).permute(0,2,3,1).squeeze(0).detach().cpu().numpy()
-            ),
-            cmapy.cmap('RdBu')
-        ), cv2.COLOR_BGR2RGB)
-    
-    # Rescale and handle multiple channels for ground truth image
-    ground_truth_img_vis = utils.rescale_img((ground_truth_img+1) / 2, mode='clamp').permute(0, 2, 3, 1).squeeze(0).detach().cpu().numpy()
-    if ground_truth_img_vis.shape[-1] > 3:  # If there are more than 3 channels, take the first 3 for visualization
-        ground_truth_img_vis = ground_truth_img_vis[:, :, :3]
-        
+    pred_lapl = cv2.cvtColor(cv2.applyColorMap(utils.to_uint8(utils.rescale_img(
+                             utils.lin2img(img_laplace), perc=2).permute(0,2,3,1).squeeze(0).detach().cpu().numpy()), cmapy.cmap('RdBu')), cv2.COLOR_BGR2RGB)
+
+    ground_truth_img = utils.rescale_img((ground_truth_img+1) / 2, mode='clamp').permute(0, 2, 3, 1).squeeze(0).detach().cpu().numpy()
     ground_truth_gradient = utils.grads2img(utils.lin2img(ground_truth['gradients'])).permute(1, 2, 0).squeeze().detach().cpu().numpy()
     ground_truth_laplacian = cv2.cvtColor(cv2.applyColorMap(utils.to_uint8(utils.rescale_img(
         utils.lin2img(ground_truth['laplace']), perc=2).permute(0, 2, 3, 1).squeeze(0).detach().cpu().numpy()), cmapy.cmap('RdBu')), cv2.COLOR_BGR2RGB)
 
-    # Write images to Tensorboard
-    writer.add_image(prefix + 'pred_img', torch.from_numpy(pred_img_vis).permute(2, 0, 1), global_step=total_steps)
+    writer.add_image(prefix + 'pred_img', torch.from_numpy(predicted_img).permute(2, 0, 1), global_step=total_steps)
     writer.add_image(prefix + 'pred_grad', torch.from_numpy(pred_grad).permute(2, 0, 1), global_step=total_steps)
     writer.add_image(prefix + 'pred_lapl', torch.from_numpy(pred_lapl).permute(2,0,1), global_step=total_steps)
-    writer.add_image(prefix + 'gt_img', torch.from_numpy(ground_truth_img_vis).permute(2,0,1), global_step=total_steps)
+    writer.add_image(prefix + 'gt_img', torch.from_numpy(ground_truth_img).permute(2,0,1), global_step=total_steps)
     writer.add_image(prefix + 'gt_grad', torch.from_numpy(ground_truth_gradient).permute(2, 0, 1), global_step=total_steps)
     writer.add_image(prefix + 'gt_lapl', torch.from_numpy(ground_truth_laplacian).permute(2, 0, 1), global_step=total_steps)
 
@@ -92,42 +66,30 @@ def summary(
         prefix+'img_'
     )
 
-
 def write_metrics(pred_img, gt_img, writer, iter, prefix):
     """
-    Compute peak signal to noise ratio and structural similarity for each channel and write to tensorboard.
+    Compute peak signal to noise ratio and structural similarity and write to tensorboard.
     """
     batch_size = pred_img.shape[0]
-    channels = pred_img.shape[1]
-    
-    
+
     pred_img = pred_img.detach().cpu().numpy()
     gt_img = gt_img.detach().cpu().numpy()
 
     psnrs, ssims = list(), list()
-    
     for i in range(batch_size):
-        psnr_channel, ssim_channel = list(), list()
-        
-        for ch in range(channels):
-            p = pred_img[i, ch].transpose(0, 1)
-            trgt = gt_img[i, ch].transpose(0, 1)
-            
-            # Normalize the images to [0, 1] range for SSIM and PSNR computation
-            p = (p / 2.) + 0.5
-            p = np.clip(p, a_min=0., a_max=1.)
+        p = pred_img[i].transpose(1, 2, 0)
+        trgt = gt_img[i].transpose(1, 2, 0)
 
-            trgt = (trgt / 2.) + 0.5
-            
-            ssim = metrics.structural_similarity(im1=p, im2=trgt, data_range=1)
-            psnr = metrics.peak_signal_noise_ratio(p, trgt, data_range=1)
+        p = (p / 2.) + 0.5
+        p = np.clip(p, a_min=0., a_max=1.)
 
-            ssim_channel.append(ssim)
-            psnr_channel.append(psnr)
-            
-        # Average PSNR and SSIM over all channels
-        psnrs.append(np.mean(psnr_channel))
-        ssims.append(np.mean(ssim_channel))
+        trgt = (trgt / 2.) + 0.5
+
+        ssim = metrics.structural_similarity(im1=p, im2=trgt, channel_axis=-1, data_range=1)
+        psnr = metrics.peak_signal_noise_ratio(p, trgt, data_range=1)
+
+        psnrs.append(psnr)
+        ssims.append(ssim)
 
     writer.add_scalar(prefix + "psnr", np.mean(psnrs), iter)
     writer.add_scalar(prefix + "ssim", np.mean(ssims), iter)

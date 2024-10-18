@@ -1,7 +1,9 @@
 import torch
 import torch.nn.functional as F
 import math
-import pdb
+import logging
+
+logger = logging.getLogger(__name__)
 
 class KANLinear(torch.nn.Module):
     def __init__(
@@ -52,6 +54,7 @@ class KANLinear(torch.nn.Module):
         self.grid_eps = grid_eps
 
         self.reset_parameters()
+        logger.info(f"KANLinear initialized with {in_features} -> {out_features}")
 
     def reset_parameters(self):
         torch.nn.init.kaiming_uniform_(self.base_weight, a=math.sqrt(5) * self.scale_base)
@@ -151,18 +154,21 @@ class KANLinear(torch.nn.Module):
         )
 
     def forward(self, x: torch.Tensor):
+        logger.debug(f"KANLinear layer Input features: {x.size(-1)}")
+        logger.debug(f"Number of features: {self.in_features}")
         assert x.size(-1) == self.in_features
         original_shape = x.shape
         x = x.reshape(-1, self.in_features)
-
+        
         base_output = F.linear(self.base_activation(x), self.base_weight)
         spline_output = F.linear(
             self.b_splines(x).view(x.size(0), -1),
             self.scaled_spline_weight.view(self.out_features, -1),
         )
         output = base_output + spline_output
-        
+        logger.debug(f"KANLinear layer Output shape before reshape: {output.shape}")
         output = output.reshape(*original_shape[:-1], self.out_features)
+        logger.debug(f"KANLinear layer Output shape: {output.shape}")
         return output
 
     @torch.no_grad()
@@ -271,16 +277,20 @@ class KAN(torch.nn.Module):
                 )
             )
         self.net = torch.nn.Sequential(*self.layers)
+        logger.info("KAN model initialized")
 
     def forward(self, x: torch.Tensor, update_grid=False):
         if isinstance(x, dict):
             coords = x["coords"].clone().detach().requires_grad_(True)
+
+        logger.debug(f"Kan model input shape: {coords.shape}")
             
         # for layer in self.layers:
         #     if update_grid:
         #         layer.update_grid(coords)
         #     out = layer(coords)
         out = self.net(coords)
+        logger.debug(f"Kan model output shape: {out.shape}")
         return {'model_in': coords, 'model_out': out}
 
     def regularization_loss(self, regularize_activation=1.0, regularize_entropy=1.0):

@@ -38,7 +38,7 @@ options:
 ### SIREN
 To train the SIREN model on image data, use:
 ```
-python .\run.py --model siren 
+python .\run.py --model siren
 ```
 
 ## Analyzing results

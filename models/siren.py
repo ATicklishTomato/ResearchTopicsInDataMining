@@ -57,14 +57,14 @@ class SIREN(nn.Module):
             
         logger.info("SIREN model initialized")
 
+        logger.info("SIREN model initialized")
+
     def forward(self, model_input):
         # Enables us to compute gradients w.r.t. coordinates
         coords = model_input['coords'].clone().detach().requires_grad_(True)
-        
         logger.debug(f"Input shape: {coords.shape}")
         output = self.net(coords)
         logger.debug(f"Output shape: {output.shape}")
-
 
         return {'model_in': coords, 'model_out': output}
 

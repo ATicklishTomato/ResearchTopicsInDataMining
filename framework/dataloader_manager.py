@@ -5,7 +5,6 @@ from torch.utils.data import DataLoader
 from data.images.reconstruction.dataset import Reconstruction
 from data.images.utils import Implicit2DWrapper
 
-
 logger = logging.getLogger(__name__)
 
 def get_dataloader(args):
@@ -14,9 +13,9 @@ def get_dataloader(args):
 
     if args.data == "images":
         logger.debug(f"Getting dataloader for image reconstruction")
-         
+
         data_path = f"data/images/reconstruction/files/{args.data_fidelity}"
-        
+
         if os.path.isdir(data_path):
             # Sort the .JPEG files in the data_path
             image_files = sorted([f for f in os.listdir(data_path) if f.endswith(".JPEG")])
@@ -25,7 +24,7 @@ def get_dataloader(args):
             if args.data_point < len(image_files):
                 selected_image = image_files[args.data_point]
                 print(f"Selected image file: {selected_image}")
-                
+
                 img_dataset = Reconstruction(
                     path=os.path.join(data_path, selected_image)
                 )
@@ -37,6 +36,7 @@ def get_dataloader(args):
         else:
             logger.error(f"Data path {data_path} does not exist.")
             raise FileNotFoundError(f"Data path {data_path} does not exist.")
+
     else:
         logger.error(f"Data type {args.data} not recognized")
         raise ValueError(f"Data type {args.data} not recognized")

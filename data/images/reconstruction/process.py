@@ -45,9 +45,11 @@ def get_images_with_resolution(folder_path, resolution=(500, 500), max_images=10
             gradients.append(grad_magnitude)
             
     return selected_images, gradients
+
 def move_image_to_fidelity_folder(image_path, grad_magnitude, low_threshold, high_threshold):
     """Move an image to the appropriate folder based on its gradient magnitude."""
     image_name = os.path.basename(image_path)
+
     # Determine the target folder based on thresholds
     if grad_magnitude < low_threshold:
         target_folder = './low'
@@ -55,12 +57,15 @@ def move_image_to_fidelity_folder(image_path, grad_magnitude, low_threshold, hig
         target_folder = './medium'
     else:
         target_folder = './high'
+
     # Create the folder if it doesn't exist
     if not os.path.exists(target_folder):
         os.makedirs(target_folder)
+
     # Move the image to the target folder
     shutil.move(image_path, os.path.join(target_folder, image_name))
     print(f"Moved {image_name} to {target_folder}")
+
 def plot_gradient_distribution(gradients):
     """Plot the distribution of gradient magnitudes."""
     plt.hist(gradients, bins=20, color='blue', edgecolor='black')
@@ -68,22 +73,30 @@ def plot_gradient_distribution(gradients):
     plt.xlabel('Gradient Magnitude')
     plt.ylabel('Number of Images')
     plt.show()
-if __name__ == "main":
+
+if __name__ == "__main__":
     """
     This script can be used to seperate your dataset of images based on the fidelity of the images.
     """
+
     # Download a dataset with images and point to it
     folder_path = 'C:\\Users\\user\Downloads\\images'
+
     # Get 100 images of 500x500 resolution
     selected_images, gradients = get_images_with_resolution(folder_path, resolution=(500, 500), max_images=300)
+
     # Plot the distribution of gradients to manually set thresholds
     if gradients:
         plot_gradient_distribution(gradients)
     else:
         print("No images of the specified resolution were found.")
+
     # Manually define thresholds for low, medium, and high fidelity after viewing the plot
     low_threshold = 70    # Example threshold, modify based on the distribution
     high_threshold = 200   # Example threshold, modify based on the distribution
+
     # Move images to the appropriate folders
     for image_path, grad_magnitude in selected_images:
         move_image_to_fidelity_folder(image_path, grad_magnitude, low_threshold, high_threshold)
+
+
