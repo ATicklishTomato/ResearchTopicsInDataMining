@@ -8,6 +8,7 @@ import os
 import shutil
 import logging
 
+
 logger = logging.getLogger(__name__)
 
 def train(
@@ -54,10 +55,11 @@ def train(
 
             for step, (model_input, ground_truth) in enumerate(dataloader):
                 start_time = time.time()
-            
+
                 model_input = {key: value.to(device) for key, value in model_input.items()}
                 ground_truth = {key: value.to(device) for key, value in ground_truth.items()}
 
+                logging.debug(f"Model input: {model_input}")
                 model_output = model(model_input)
                 losses = config["loss_fn"](model_output, ground_truth)
 

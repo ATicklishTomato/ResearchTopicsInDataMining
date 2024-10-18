@@ -100,6 +100,7 @@ def write_metrics(pred_img, gt_img, writer, iter, prefix):
     batch_size = pred_img.shape[0]
     channels = pred_img.shape[1]
 
+
     pred_img = pred_img.detach().cpu().numpy()
     gt_img = gt_img.detach().cpu().numpy()
 

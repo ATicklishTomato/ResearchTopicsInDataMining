@@ -49,7 +49,6 @@ def get_image_tensor(image, sidelength):
         ToTensor(),
         Normalize(torch.Tensor([0.5, 0.5, 0.5]), torch.Tensor([0.5, 0.5, 0.5]))  # Normalizing RGB channels
     ])
-
     return transform(img)
 
 

@@ -29,6 +29,14 @@ output_dimensions = {
     'images': 1,
 }
 
+hidden_dimensions = {
+    'images': 16,
+}
+
+hidden_layers = {
+    'images': [16,16]
+}
+
 def parse_args():
     parser = ArgumentParser(description='Process some integers.')
     parser.add_argument('--data',
@@ -90,6 +98,12 @@ def parse_args():
                         type=str,
                         default='test',
                         help='Unique name of this experiment.')
+    parser.add_argument('--skip_train',
+                        action='store_true',
+                        help='Skip training and only evaluate the model. Default is False')
+    parser.add_argument('--skip_test',
+                        action='store_true',
+                        help='Skip testing and only train the model. Default is False')
     return parser.parse_args()
 
 def validate_requirements():
@@ -119,6 +133,7 @@ def validate_requirements():
         exit(1)
     logger.info("All requirements satisfied")
 
+
 def get_configuration(args):
     match args.data:
         case "images":
@@ -130,29 +145,29 @@ def get_configuration(args):
                 "loss_fn": mean_squared_error, 
                 "summary_fn": partial(summary, resolution),
                 "resolution": resolution,
-                "in_features": 2
+                "in_features": input_dimensions[args.data],
+                "out_features": output_dimensions[args.data],
+                "hidden_dim": hidden_dimensions[args.data],
+                "hidden_layers": hidden_layers[args.data]
             }
         case _:
             logger.error(f"Data {args.data} not recognized")
             raise ValueError(f"Data {args.data} not recognized")
-        
+
 def get_model(args, dataloader, config):
     match args.model:
-        # case ModelEnum.MFN.value:
-        #     from models.mfn import MFN
-        #     model = MFN()
-        # case ModelEnum.FFB.value:
-        #     from models.fourier import FourierFilterBank
-        #     model = FourierFilterBank()
-        # case ModelEnum.KAN.value:
-        #     from models.kan import KAN
-        #     model = KAN()
+        case ModelEnum.MFN.value:
+            from models.mfn import GaborNet
+            model = GaborNet(in_size=config["in_features"], hidden_size=config["hidden_dim"], out_size=dataloader.dataset.dataset.img_channels, n_layers=3, input_scale=256, weight_scale=1)
+        case ModelEnum.KAN.value:
+            from models.kan import KAN, KANLinear
+            model = KAN(layers_hidden=[config["in_features"], *config["hidden_layers"], dataloader.dataset.dataset.img_channels])
         case ModelEnum.BASIC.value:
             from models.basic.basic import Basic
             model = Basic(input_dimensions[args.data], output_dimensions[args.data])
         case ModelEnum.SIREN.value:
             from models.siren import SIREN
-            model = SIREN(in_features=config["in_features"], out_features=dataloader.dataset.dataset.img_channels)
+            model = SIREN(in_features=config["in_features"], out_features=dataloader.dataset.dataset.img_channels, hidden_features=config["hidden_dim"])
         case _:
             logger.error(f"Model {args.model} not recognized")
             raise ValueError(f"Model {args.model} not recognized")
@@ -170,7 +185,7 @@ def main():
     console_handler.setLevel(args.verbose)
     console_handler.setFormatter(logging.Formatter("%(levelname)s %(asctime)s (%(filename)s, %(funcName)s) - %(message)s"))
     logger.addHandler(console_handler)
-    validate_requirements()
+    # validate_requirements()
 
     logger.debug(f"Arguments: {args}")
 
@@ -180,22 +195,30 @@ def main():
 
     logger.info("Loading model")
     config = get_configuration(args)
+    logger.info("Configuration loaded")
     model = get_model(args, dataloader, config)
+    
 
     if args.load:
         model.load_state_dict(torch.load(f"{args.save_dir}/{args.model}.pt"))
     logger.info("Model loaded")
 
-    train(
-        model=model,
-        dataloader=dataloader,
-        epochs=args.epochs,
-        lr=args.lr,
-        model_dir=os.path.join('./logs', args.experiment_name),
-        config=config,
-        device=args.device,
-        log_level=args.verbose
-    )
+    
+
+    if not args.skip_train:
+        train(
+            model=model,
+            dataloader=dataloader,
+            epochs=args.epochs,
+            lr=args.lr,
+            model_dir=os.path.join('./logs', args.experiment_name),
+            config=config,
+            device=args.device,
+            log_level=args.verbose
+        )
+
+    if not args.skip_test:
+        test(model, args.data, dataloader, args.device, args.verbose)
 
     logger.info("Run complete. Logs saved in run.log")
 

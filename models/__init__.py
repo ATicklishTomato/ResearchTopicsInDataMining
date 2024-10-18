@@ -1,6 +1,11 @@
-from models.basic import basic
 from models.siren import SIREN
+from models.kan import KANLinear, KAN
+from models.mfn import GaborNet
+
 
 __all__ = [
-    "basic", "SIREN"
+    "SIREN",
+    "KANLinear",
+    "KAN",
+    "GaborNet"
 ]
