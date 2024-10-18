@@ -10,7 +10,6 @@ import wandb
 
 from data.images import metrics
 
-
 logger = logging.getLogger(__name__)
 
 def train(
