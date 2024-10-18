@@ -33,11 +33,6 @@ hidden_dimensions = {
     'images': 16,
 }
 
-
-hidden_dimensions = {
-    'images': 16,
-}
-
 hidden_layers = {
     'images': [16,16]
 }
@@ -49,15 +44,6 @@ def parse_args():
                         choices=['images'],
                         default='images',
                         help='Type of data to train and test on. Default is images')
-    parser.add_argument('--data_point',
-                        type=int,
-                        default=0,
-                        help='Choose the index of the data_point to train on.')
-    parser.add_argument('--data_fidelity',
-                        type=str,
-                        choices=['low', 'medium', 'high'],\
-                        default='low',
-                        help='Choose the fidelity of the data point to train on.')
     parser.add_argument('--data_point',
                         type=int,
                         default=0,
@@ -169,28 +155,6 @@ def get_configuration(args):
             raise ValueError(f"Data {args.data} not recognized")
 
 def get_model(args, dataloader, config):
-def get_configuration(args):
-    match args.data:
-        case "images":
-            from data.images.metrics import mean_squared_error
-            from data.images.summary import summary
-            from functools import partial
-            resolution = (500, 500)
-            return {
-                "loss_fn": mean_squared_error, 
-                "summary_fn": partial(summary, resolution),
-                "resolution": resolution,
-                "in_features": input_dimensions[args.data],
-                "out_features": output_dimensions[args.data],
-                "hidden_dim": hidden_dimensions[args.data],
-                "hidden_layers": hidden_layers[args.data]
-            }
-        case _:
-            logger.error(f"Data {args.data} not recognized")
-            raise ValueError(f"Data {args.data} not recognized")
-        
-
-def get_model(args, dataloader, config):
     match args.model:
         case ModelEnum.MFN.value:
             from models.mfn import GaborNet
@@ -258,7 +222,6 @@ def main():
         train(
             model=model,
             dataloader=dataloader,
-            dataloader=dataloader,
             epochs=args.epochs,
             lr=args.lr,
             model_dir=os.path.join('./logs', args.experiment_name),
@@ -275,3 +238,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+x
