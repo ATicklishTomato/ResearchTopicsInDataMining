@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 def train(
     model,
-    train_dataloader,
+    dataloader,
     epochs,
     lr,
     model_dir: str,
@@ -44,7 +44,7 @@ def train(
     summary(model)
 
     total_steps = 0
-    with tqdm(total=len(train_dataloader) * epochs) as pbar:
+    with tqdm(total=len(dataloader) * epochs) as pbar:
         train_losses = []
         for epoch in range(epochs):
             if not epoch % 25 and epoch:
@@ -58,7 +58,7 @@ def train(
                     np.array(train_losses)
                 )
 
-            for step, (model_input, ground_truth) in enumerate(train_dataloader):
+            for step, (model_input, ground_truth) in enumerate(dataloader):
                 start_time = time.time()
 
                 model_input = {key: value.to(device) for key, value in model_input.items()}

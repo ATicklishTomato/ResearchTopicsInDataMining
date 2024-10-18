@@ -26,7 +26,11 @@ input_dimensions = {
 }
 
 output_dimensions = {
-    'images': 1,
+    'images': 3,
+}
+
+hidden_dimensions = {
+    'images': 16,
 }
 
 hidden_layers = {
@@ -40,6 +44,15 @@ def parse_args():
                         choices=['images'],
                         default='images',
                         help='Type of data to train and test on. Default is images')
+    parser.add_argument('--data_point',
+                        type=int,
+                        default=0,
+                        help='Choose the index of the data_point to train on.')
+    parser.add_argument('--data_fidelity',
+                        type=str,
+                        choices=['low', 'medium', 'high'],\
+                        default='low',
+                        help='Choose the fidelity of the data point to train on.')
     parser.add_argument('--model',
                         type=str,
                         choices=[model.value for model in ModelEnum],
@@ -120,43 +133,49 @@ def validate_requirements():
         exit(1)
     logger.info("All requirements satisfied")
 
-def get_model(args):
+def get_configuration(args):
+    match args.data:
+        case "images":
+            from data.images.metrics import mean_squared_error
+            from data.images.summary import summary
+            from functools import partial
+            resolution = (500, 500)
+            return {
+                "loss_fn": mean_squared_error, 
+                "summary_fn": partial(summary, resolution),
+                "resolution": resolution,
+                "in_features": input_dimensions[args.data],
+                "out_features": output_dimensions[args.data],
+                "hidden_dim": hidden_dimensions[args.data],
+                "hidden_layers": hidden_layers[args.data]
+            }
+        case _:
+            logger.error(f"Data {args.data} not recognized")
+            raise ValueError(f"Data {args.data} not recognized")
+        
+
+def get_model(args, dataloader, config):
     match args.model:
-        # case ModelEnum.MFN.value:
-        #     from models.mfn import MFN
-        #     model = MFN()
+        case ModelEnum.MFN.value:
+            from models.mfn import GaborNet
+            model = GaborNet(in_size=config["in_features"], hidden_size=config["hidden_dim"], out_size=config["out_features"], n_layers=3, input_scale=256, weight_scale=1)
         case ModelEnum.FFB.value:
             from models.NFFB.img.NFFB_2d import NFFB
-            model = NFFB(input_dimensions[args.data], output_dimensions[args.data])
+            model = NFFB(config["in_features"], dataloader.dataset.dataset.img_channels)
         case ModelEnum.KAN.value:
             from models.kan import KAN, KANLinear
-            model = KAN(layers_hidden=[input_dimensions[args.data], *hidden_layers[args.data], output_dimensions[args.data]])
+            model = KAN(layers_hidden=[config["in_features"], *config["hidden_layers"], dataloader.dataset.dataset.img_channels])
         case ModelEnum.BASIC.value:
             from models.basic.basic import Basic
             model = Basic(input_dimensions[args.data], output_dimensions[args.data])
         case ModelEnum.SIREN.value:
             from models.siren import SIREN
-            model = SIREN()
+            model = SIREN(in_features=config["in_features"], out_features=dataloader.dataset.dataset.img_channels)
         case _:
             logger.error(f"Model {args.model} not recognized")
             raise ValueError(f"Model {args.model} not recognized")
     return model
 
-def get_configuration(args):
-    match args.data:
-        case "images":
-            from data.image.metrics import mean_squared_error
-            from data.image.summary import summary
-            from functools import partial
-            resolution = (512, 512)
-            return {
-                "loss_fn": mean_squared_error, 
-                "summary_fn": partial(summary, resolution),
-                "resolution": resolution
-            }
-        case _:
-            logger.error(f"Data {args.data} not recognized")
-            raise ValueError(f"Data {args.data} not recognized")
 
 def main():
     args = parse_args()
@@ -173,23 +192,26 @@ def main():
     validate_requirements()
 
     logger.debug(f"Arguments: {args}")
+    
+    dataloader = get_dataloader(args)
+    logger.debug(f"Dataloaders: {dataloader}")
+
 
     logger.info("Loading model")
-    model = get_model(args)
     config = get_configuration(args)
+    logger.info("Configuration loaded")
+    model = get_model(args, dataloader, config)
 
     if args.load:
         model.load_state_dict(torch.load(f"{args.save_dir}/{args.model}.pt"))
     logger.info("Model loaded")
 
-    dataloaders = get_dataloader(args)
-
-    logger.debug(f"Dataloaders: {dataloaders}")
+   
 
     if not args.skip_train:
         train(
             model=model,
-            train_dataloader=dataloaders['train'],
+            dataloader=dataloader,
             epochs=args.epochs,
             lr=args.lr,
             model_dir=os.path.join('./logs', args.experiment_name),
@@ -199,7 +221,7 @@ def main():
         )
 
     if not args.skip_test:
-        test(model, args.data, dataloaders['test'], args.device, args.verbose)
+        test(model, args.data, dataloader, args.device, args.verbose)
 
     logger.info("Run complete. Logs saved in run.log")
 

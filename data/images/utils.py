@@ -53,42 +53,57 @@ class Implicit2DWrapper(Dataset):
         return len(self.dataset)
 
     def __getitem__(self, idx):
+        # Tensor of shape (c, x, y)
         img = self.transform(self.dataset[idx])
 
+         # Apply the sobel filter to the x and y axes
         if self.compute_diff == 'gradients':
             img *= 1e1
-            gradx = scipy.ndimage.sobel(img.numpy(), axis=1).squeeze(0)[..., None]
-            grady = scipy.ndimage.sobel(img.numpy(), axis=2).squeeze(0)[..., None]
+            # Compute gradients and sum to get numpy array to shape (x, y)
+            gradx = scipy.ndimage.sobel(img.numpy(), axis=1).sum(axis=0)  # Sum over channels
+            grady = scipy.ndimage.sobel(img.numpy(), axis=2).sum(axis=0)  # Sum over channels
         elif self.compute_diff == 'laplacian':
             img *= 1e4
-            laplace = scipy.ndimage.laplace(img.numpy()).squeeze(0)[..., None]
+            # Compute laplacian and sum to get numpy array to shape (x, y)
+            laplace = scipy.ndimage.laplace(img.numpy()).sum(axis=0)
         elif self.compute_diff == 'all':
-            gradx = scipy.ndimage.sobel(img.numpy(), axis=1).squeeze(0)[..., None]
-            grady = scipy.ndimage.sobel(img.numpy(), axis=2).squeeze(0)[..., None]
-            laplace = scipy.ndimage.laplace(img.numpy()).squeeze(0)[..., None]
+            # Compute gradient & laplacian and sum to get numpy array to shape (x, y)
+            gradx = scipy.ndimage.sobel(img.numpy(), axis=1).sum(axis=0)  # Sum over channels
+            grady = scipy.ndimage.sobel(img.numpy(), axis=2).sum(axis=0)  # Sum over channels
+            laplace = scipy.ndimage.laplace(img.numpy()).sum(axis=0)
 
         img = img.permute(1, 2, 0).view(-1, self.dataset.img_channels)
-
         in_dict = {'idx': idx, 'coords': self.mgrid}
         gt_dict = {'img': img}
 
         if self.compute_diff == 'gradients':
-            gradients = torch.cat((torch.from_numpy(gradx).reshape(-1, 1),
-                                   torch.from_numpy(grady).reshape(-1, 1)),
-                                  dim=-1)
+            gradients = torch.stack(
+                (
+                    torch.from_numpy(gradx),  # (x, y)
+                    torch.from_numpy(grady)   # (x, y)
+                ),
+                dim=-1  # Concatenate along the last dimension to get shape (x, y, 2)
+            )
+            gradients = gradients.view(-1, 2)
             gt_dict.update({'gradients': gradients})
 
         elif self.compute_diff == 'laplacian':
             gt_dict.update({'laplace': torch.from_numpy(laplace).view(-1, 1)})
 
         elif self.compute_diff == 'all':
-            gradients = torch.cat((torch.from_numpy(gradx).reshape(-1, 1),
-                                   torch.from_numpy(grady).reshape(-1, 1)),
-                                  dim=-1)
+            gradients = torch.stack(
+                (
+                    torch.from_numpy(gradx),  # (x, y)
+                    torch.from_numpy(grady)   # (x, y)
+                ),
+                dim=-1  # Concatenate along the last dimension to get shape (x, y, 2)
+            )
+            gradients = gradients.view(-1, 2)
             gt_dict.update({'gradients': gradients})
             gt_dict.update({'laplace': torch.from_numpy(laplace).view(-1, 1)})
 
         return in_dict, gt_dict
+
 
     def get_item_small(self, idx):
         img = self.transform(self.dataset[idx])
@@ -100,39 +115,65 @@ class Implicit2DWrapper(Dataset):
         return spatial_img, img, gt_dict
     
 def lin2img(tensor, image_resolution=None):
+     # print("tensor.shape", tensor.shape)
     batch_size, num_samples, channels = tensor.shape
+    
     if image_resolution is None:
         width = np.sqrt(num_samples).astype(int)
         height = width
     else:
         height = image_resolution[0]
         width = image_resolution[1]
-
+        
+    # Reshape the tensor into (batch_size, channels, height, width)
     return tensor.permute(0, 2, 1).view(batch_size, channels, height, width)
 
 
 def grads2img(gradients):
-    mG = gradients.detach().squeeze(0).permute(-2, -1, -3).cpu()
-
-    # assumes mG is [row,cols,2]
-    nRows = mG.shape[0]
-    nCols = mG.shape[1]
-    mGr = mG[:, :, 0]
-    mGc = mG[:, :, 1]
-    mGa = np.arctan2(mGc, mGr)
-    mGm = np.hypot(mGc, mGr)
-    mGhsv = np.zeros((nRows, nCols, 3), dtype=np.float32)
-    mGhsv[:, :, 0] = (mGa + math.pi) / (2. * math.pi)
-    mGhsv[:, :, 1] = 1.
-
-    nPerMin = np.percentile(mGm, 5)
-    nPerMax = np.percentile(mGm, 95)
-    mGm = (mGm - nPerMin) / (nPerMax - nPerMin)
-    mGm = np.clip(mGm, 0, 1)
-
-    mGhsv[:, :, 2] = mGm
-    mGrgb = colors.hsv_to_rgb(mGhsv)
-    return torch.from_numpy(mGrgb).permute(2, 0, 1)
+     # If there are multiple channels, we process each channel individually
+    if gradients.size(0) > 1:
+        grad_imgs = []
+        for channel in range(gradients.size(0)):
+            mG = gradients[channel].detach().permute(-2, -1, -3).cpu()
+            # assumes mG is [row, cols, 2]
+            nRows = mG.shape[0]
+            nCols = mG.shape[1]
+            mGr = mG[:, :, 0]
+            mGc = mG[:, :, 1]
+            mGa = np.arctan2(mGc, mGr)
+            mGm = np.hypot(mGc, mGr)
+            mGhsv = np.zeros((nRows, nCols, 3), dtype=np.float32)
+            mGhsv[:, :, 0] = (mGa + math.pi) / (2. * math.pi)
+            mGhsv[:, :, 1] = 1.
+            nPerMin = np.percentile(mGm, 5)
+            nPerMax = np.percentile(mGm, 95)
+            mGm = (mGm - nPerMin) / (nPerMax - nPerMin)
+            mGm = np.clip(mGm, 0, 1)
+            mGhsv[:, :, 2] = mGm
+            mGrgb = colors.hsv_to_rgb(mGhsv)
+            grad_imgs.append(torch.from_numpy(mGrgb).permute(2, 0, 1))
+        # Stack the images for each channel back together
+        return torch.stack(grad_imgs, dim=0)
+    else:
+        # For single-channel gradients (e.g., grayscale)
+        mG = gradients.detach().squeeze(0).permute(-2, -1, -3).cpu()
+        # assumes mG is [row, cols, 2]
+        nRows = mG.shape[0]
+        nCols = mG.shape[1]
+        mGr = mG[:, :, 0]
+        mGc = mG[:, :, 1]
+        mGa = np.arctan2(mGc, mGr)
+        mGm = np.hypot(mGc, mGr)
+        mGhsv = np.zeros((nRows, nCols, 3), dtype=np.float32)
+        mGhsv[:, :, 0] = (mGa + math.pi) / (2. * math.pi)
+        mGhsv[:, :, 1] = 1.
+        nPerMin = np.percentile(mGm, 5)
+        nPerMax = np.percentile(mGm, 95)
+        mGm = (mGm - nPerMin) / (nPerMax - nPerMin)
+        mGm = np.clip(mGm, 0, 1)
+        mGhsv[:, :, 2] = mGm
+        mGrgb = colors.hsv_to_rgb(mGhsv)
+        return torch.from_numpy(mGrgb).permute(2, 0, 1)
 
 
 def rescale_img(x, mode='scale', perc=None, tmax=1.0, tmin=0.0):
