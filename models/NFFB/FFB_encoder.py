@@ -41,7 +41,7 @@ class FFB_encoder(nn.Module):
             finest_resolution=base_resolution * (per_level_scale ** (grid_level - 1)),
         )
         self.grid_level = grid_level
-        print(f"Grid encoder levels: {grid_level}")
+        logger.debug(f"Grid encoder levels: {grid_level}")
 
         self.feat_dim = feat_dim
 
