@@ -16,7 +16,7 @@ class ImageFitting(Dataset):
         logger.setLevel(verbose)
         logger.info(f"Preparing dataloader for image {image}")
         img = get_image_tensor(image, sidelength)
-        self.pixels =  img.permute(1, 2, 0).view(-1, img.shape[0])
+        self.pixels = self.pixels = img.permute(1, 2, 0).view(-1, img.shape[0])
         self.coords = get_mgrid(sidelength, 2)
         logger.debug(f"Pixels shape: {self.pixels.shape}, Coords shape: {self.coords.shape}")
 

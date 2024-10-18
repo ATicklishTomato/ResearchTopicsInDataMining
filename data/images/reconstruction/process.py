@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import shutil
+
 def compute_gradient_magnitude_color(image):
     """Compute gradient magnitude for each color channel and combine the results."""
     channels = cv2.split(image)
@@ -19,6 +20,7 @@ def compute_gradient_magnitude_color(image):
     # Combine the gradient magnitudes by taking the maximum gradient at each pixel
     combined_grad_magnitude = np.max(np.array(grad_magnitudes), axis=0)
     return np.mean(combined_grad_magnitude)
+
 def get_images_with_resolution(folder_path, resolution=(500, 500), max_images=100):
     """Get images that match the specified resolution and copy them to the ./ folder."""
     valid_extensions = ('.JPEG')
@@ -98,5 +100,3 @@ if __name__ == "__main__":
     # Move images to the appropriate folders
     for image_path, grad_magnitude in selected_images:
         move_image_to_fidelity_folder(image_path, grad_magnitude, low_threshold, high_threshold)
-
-
