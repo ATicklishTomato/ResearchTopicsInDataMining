@@ -7,9 +7,9 @@ import os
 import wandb
 from matplotlib import pyplot as plt
 
-import data.images.utils as utils
+import data.utils as utils
 import data.images.differential_operators as differential_operators
-import data.images.metrics as metrics
+import data.metrics as metrics
 
 def cond_mkdir(path):
     if not os.path.exists(path):
@@ -30,7 +30,7 @@ def make_image(tensor, filename, squeeze=True, permute=None):
     if wandb.run is not None:
         wandb.log({filename: wandb.Image(plt)})
 
-def summary(
+def image_summary(
     image_resolution,
     ground_truth,
     model_output,
@@ -56,7 +56,7 @@ def summary(
                squeeze=False, permute=None)
 
     # Rescale and handle multiple channels for predicted image
-    pred_img_vis = utils.rescale_img((predicted_img+1)/2, mode='clamp').permute(0,2,3,1).squeeze(0).detach().cpu().numpy()
+    pred_img_vis = utils.rescale_img((predicted_img + 1) / 2, mode='clamp').permute(0, 2, 3, 1).squeeze(0).detach().cpu().numpy()
     if pred_img_vis.shape[-1] > 3:  # If there are more than 3 channels, take the first 3 for visualization
         pred_img_vis = pred_img_vis[:, :, :3]
 
@@ -69,7 +69,7 @@ def summary(
 
     print(img.shape)
 
-    pred_grad = utils.grads2img(utils.lin2img(img_gradient)).permute(1,2,0).squeeze().detach().cpu().numpy()
+    pred_grad = utils.grads2img(utils.lin2img(img_gradient)).permute(1, 2, 0).squeeze().detach().cpu().numpy()
     pred_lapl = cv2.cvtColor(
         cv2.applyColorMap(
             utils.to_uint8(
@@ -82,7 +82,7 @@ def summary(
         ), cv2.COLOR_BGR2RGB)
 
     # Rescale and handle multiple channels for ground truth image
-    ground_truth_img_vis = utils.rescale_img((ground_truth_img+1) / 2, mode='clamp').permute(0, 2, 3, 1).squeeze(0).detach().cpu().numpy()
+    ground_truth_img_vis = utils.rescale_img((ground_truth_img + 1) / 2, mode='clamp').permute(0, 2, 3, 1).squeeze(0).detach().cpu().numpy()
     if ground_truth_img_vis.shape[-1] > 3:  # If there are more than 3 channels, take the first 3 for visualization
         ground_truth_img_vis = ground_truth_img_vis[:, :, :3]
 

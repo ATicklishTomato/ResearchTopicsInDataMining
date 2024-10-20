@@ -6,7 +6,7 @@ import logging
 
 from tqdm import tqdm
 
-from data.images import metrics
+from data import metrics
 
 logger = logging.getLogger(__name__)
 
@@ -82,21 +82,21 @@ class Sweeper:
                 from models.mfn import GaborNet
                 model = GaborNet(in_size=self.config["in_features"],
                                  hidden_size=self.config["hidden_dim"],
-                                 out_size=self.dataloader.dataset.dataset.img_channels,
+                                 out_size=self.dataloader.dataset.dataset.channels,
                                  n_layers=wandb_config.num_layers,
                                  input_scale=wandb_config.hidden_size,
                                  weight_scale=1)
             case ModelEnum.FFB.value:
                 from models.NFFB.img.NFFB_2d import NFFB
-                model = NFFB(self.config["in_features"], self.dataloader.dataset.dataset.img_channels)
+                model = NFFB(self.config["in_features"], self.dataloader.dataset.dataset.channels)
             case ModelEnum.KAN.value:
                 from models.kan import KAN
                 model = KAN(layers_hidden=[self.config["in_features"], *[wandb_config.hidden_size] * (wandb_config.num_layers + 2),
-                                           self.dataloader.dataset.dataset.img_channels])
+                                           self.dataloader.dataset.dataset.channels])
             case ModelEnum.SIREN.value:
                 from models.siren import SIREN
                 model = SIREN(in_features=self.config["in_features"],
-                              out_features=self.dataloader.dataset.dataset.img_channels,
+                              out_features=self.dataloader.dataset.dataset.channels,
                               hidden_features=wandb.config.hidden_size,
                               num_hidden_layers=wandb.config.num_layers)
             case _:

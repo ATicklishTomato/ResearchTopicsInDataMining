@@ -3,7 +3,7 @@ import torch
 import wandb
 from matplotlib import pyplot as plt
 
-from data.images import utils, metrics
+from data import utils, metrics
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,8 @@ def test(model,
                            'psnr': metrics.peak_signal_to_noise_ratio(model_output, ground_truth)
                            })
 
-            if config["resolution"] is not None:
+            if 'img' in ground_truth.keys():
+                logger.info("Plotting test image comparison")
                 # Get the numpy arrays for the images
                 ground_truth = utils.lin2img(ground_truth['img'], config["resolution"])
                 predicted = utils.lin2img(model_output['model_out'], config["resolution"])
@@ -55,6 +56,30 @@ def test(model,
                     wandb.log({
                         "test_image": wandb.Image(fig)
                     })
+                else:
+                    plt.savefig('./out/test_image.png')
                 plt.close(fig)
+            elif 'func' in ground_truth.keys():
+                logger.info("Plotting test audio comparison")
+                # Get the numpy arrays for the audio
+                ground_truth = ground_truth['func'].squeeze(0).detach().cpu().numpy()
+                predicted = model_output['model_out'].squeeze(0).detach().cpu().numpy()
+
+                # Plot the audio
+                plt.figure(figsize=(12, 6))
+                plt.plot(ground_truth, label='Ground Truth')
+                plt.plot(predicted, label='Predicted Audio')
+                plt.legend()
+                plt.title('Ground Truth vs Predicted Audio')
+                plt.xlabel('Time')
+                plt.ylabel('Amplitude')
+
+                if use_wandb:
+                    wandb.log({
+                        "test_audio": wandb.Image(plt)
+                    })
+                else:
+                    plt.savefig('./out/test_audio.png')
+                plt.close()
 
     logger.info("Testing complete")

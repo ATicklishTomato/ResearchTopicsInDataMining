@@ -6,7 +6,7 @@ import os
 import logging
 import wandb
 
-from data.images import metrics
+from data import metrics
 
 logger = logging.getLogger(__name__)
 

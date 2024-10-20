@@ -6,7 +6,10 @@ from scipy.spatial import cKDTree as KDTree
 
 
 def mean_squared_error(model_output, gt):
-    return {'img_loss': ((model_output['model_out'] - gt['img']) ** 2).mean()}
+    if 'img' in gt.keys():
+        return {'img_loss': ((model_output['model_out'] - gt['img']) ** 2).mean()}
+    elif 'func' in gt.keys():
+        return {'func_loss': ((model_output['model_out'] - gt['func']) ** 2).mean()}
 
 structural_similarity = skimage.metrics.structural_similarity
 peak_signal_noise_ratio = skimage.metrics.peak_signal_noise_ratio
@@ -21,7 +24,10 @@ def peak_signal_to_noise_ratio(model_output, gt):
         psnr (float): The Peak Signal to Noise Ratio.
     """
     psnr = PeakSignalNoiseRatio()
-    psnr.update(model_output['model_out'], gt['img'])
+    if 'img' in gt.keys():
+        psnr.update(model_output['model_out'], gt['img'])
+    elif 'func' in gt.keys():
+        psnr.update(model_output['model_out'], gt['func'])
     return psnr.compute().detach().cpu().item()
 
 def intersection_over_union(model_output, gt, n_classes=2):

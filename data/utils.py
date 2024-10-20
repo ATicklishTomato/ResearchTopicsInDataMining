@@ -72,7 +72,7 @@ class Implicit2DWrapper(Dataset):
             grady = scipy.ndimage.sobel(img.numpy(), axis=2).sum(axis=0)  # Sum over channels
             laplace = scipy.ndimage.laplace(img.numpy()).sum(axis=0)
 
-        img = img.permute(1, 2, 0).view(-1, self.dataset.img_channels)
+        img = img.permute(1, 2, 0).view(-1, self.dataset.channels)
         in_dict = {'idx': idx, 'coords': self.mgrid}
         gt_dict = {'img': img}
 
@@ -108,7 +108,7 @@ class Implicit2DWrapper(Dataset):
     def get_item_small(self, idx):
         img = self.transform(self.dataset[idx])
         spatial_img = img.clone()
-        img = img.permute(1, 2, 0).view(-1, self.dataset.img_channels)
+        img = img.permute(1, 2, 0).view(-1, self.dataset.channels)
 
         gt_dict = {'img': img}
 
@@ -203,3 +203,23 @@ def rescale_img(x, mode='scale', perc=None, tmax=1.0, tmin=0.0):
 
 def to_uint8(x):
     return (255. * x).astype(np.uint8)
+
+class ImplicitAudioWrapper(Dataset):
+    def __init__(self, dataset):
+        self.dataset = dataset
+        self.grid = np.linspace(start=-100, stop=100, num=dataset.file_length)
+        self.grid = self.grid.astype(np.float32)
+        self.grid = torch.Tensor(self.grid).view(-1, 1)
+
+    def get_num_samples(self):
+        return self.grid.shape[0]
+
+    def __len__(self):
+        return 1
+
+    def __getitem__(self, idx):
+        rate, data = self.dataset[idx]
+        scale = np.max(np.abs(data))
+        data = (data / scale)
+        data = torch.Tensor(data).view(-1, 1)
+        return {'idx': idx, 'coords': self.grid}, {'func': data, 'rate': rate, 'scale': scale}
