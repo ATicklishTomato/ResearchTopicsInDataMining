@@ -8,7 +8,8 @@ Install the dependencies using the command `pip install -r requirements.txt`.
 ## Usage
 The code can be run through `run.py`. A series of arguments can be passed to the script to specify the model, dataset, and other parameters. The full help text is shown below. It can be accessed by running `python run.py -h` or `python run.py --help`.
 ```
-usage: run.py [-h] [--data {images}]
+usage: run.py [-h]
+[--data {images}]
 [--data_point DATA_POINT]
 [--data_fidelity {low,medium,high}]
 [--model {siren,mfn,fourier,kan,basic}]
