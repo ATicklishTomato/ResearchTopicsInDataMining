@@ -11,7 +11,7 @@ The code can be run through `run.py`. A series of arguments can be passed to the
 usage: run.py [-h] [--data {images}] [--model {siren,mfn,fourier,kan,basic}] [--epochs EPOCHS] [--batch_size BATCH_SIZE] [--lr LR] [--seed SEED] [--device DEVICE]
               [--verbose {10,20,30,40}] [--save] [--load] [--save_dir SAVE_DIR] [--skip_train] [--skip_test]
 
-Process some integers.
+Train and test a neural fields model on a chosen dataset with certain parameters
 
 options:
   -h, --help            show this help message and exit
@@ -21,7 +21,11 @@ options:
   --data_fidelity {low,medium,high}
                         Choose the fidelity of the data point to train on.
   --model {siren,mfn,fourier,kan,basic}
-                        Type of model to use. Options are for SIREN, Multiplicative Filter Networks, Fourier Filter Banks, Kolmogorov-Arnold Networks, and a basic coordinate-MLP, respectively. Default is basic
+                        Type of model to use. Options are for SIREN, Multiplicative Filter Networks, Fourier Filter Banks, Kolmogorov-Arnold Networks, and a basic coordinate-   
+                        MLP, respectively. Default is basic
+  --sweep               Run a hyperparameter sweep. Default is False. Note: This will override any arguments passed related to sweep parameters
+  --sweep_runs SWEEP_RUNS
+                        Number of random runs to perform in the hyperparameter sweep. Default is 25
   --epochs EPOCHS       Number of epochs to train for. Default is 1001
   --batch_size BATCH_SIZE
                         Batch size for training. Default is 1
@@ -32,11 +36,12 @@ options:
                         Verbosity level for logging. Options are for DEBUG, INFO, WARNING, and ERROR, respectively. Default is INFO
   --save                Save the model and optimizer state_dicts (if applicable) after training. Default is False
   --load                Load the stored model and optimizer state_dicts (if applicable) before training and skip training. Default is False
-  --experiment_name EXPERIMENT_NAME
-                        Unique name of this experiment.
+  --skip_train          Skip training and only evaluate the model. Default is False
+  --skip_test           Skip testing and only train the model. Default is False
   --wandb_api_key WANDB_API_KEY
-                        Your personal API key for Weights and Biases. Default is None. Alternatively, you can leave this empty and store the key in a file in the project root called "wandb.login". This file will be ignored   
-                        by git. NOTE: Make sure to keep this key private and secure. Do not share it or upload it to a public repository.
+                        Your personal API key for Weights and Biases. Default is None. Alternatively, you can leave this empty and store the key in a file in the project root   
+                        called "wandb.login". This file will be ignored by git. NOTE: Make sure to keep this key private and secure. Do not share it or upload it to a public    
+                        repository.
 ```
 
 ### SIREN

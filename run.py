@@ -12,7 +12,7 @@ import logging
 
 from framework.test import test
 from framework.train import train
-from sweep import execute_sweep
+from sweep import Sweeper
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ hidden_layers = {
 }
 
 def parse_args():
-    parser = ArgumentParser(description='Process some integers.')
+    parser = ArgumentParser(description='Train and test a neural fields model on a chosen dataset with certain parameters')
     parser.add_argument('--data',
                         type=str,
                         choices=['images'],
@@ -66,6 +66,10 @@ def parse_args():
                         action='store_true',
                         help='Run a hyperparameter sweep. Default is False. Note: This will override ' +
                         'any arguments passed related to sweep parameters')
+    parser.add_argument('--sweep_runs',
+                        type=int,
+                        default=25,
+                        help='Number of random runs to perform in the hyperparameter sweep. Default is 25')
     parser.add_argument('--epochs',
                         type=int,
                         default=1001,
@@ -100,10 +104,6 @@ def parse_args():
                         action='store_true',
                         help='Load the stored model and optimizer state_dicts (if applicable) ' +
                              'before training and skip training. Default is False')
-    parser.add_argument('--experiment_name',
-                        type=str,
-                        default='test',
-                        help='Unique name of this experiment.')
     parser.add_argument('--skip_train',
                         action='store_true',
                         help='Skip training and only evaluate the model. Default is False')
@@ -155,6 +155,7 @@ def get_configuration(args):
             from functools import partial
             resolution = (500, 500)
             return {
+                "datatype": "images",
                 "loss_fn": mean_squared_error, 
                 "summary_fn": partial(summary, resolution),
                 "resolution": resolution,
@@ -176,7 +177,7 @@ def get_model(args, dataloader, config):
             from models.NFFB.img.NFFB_2d import NFFB
             model = NFFB(config["in_features"], dataloader.dataset.dataset.img_channels)
         case ModelEnum.KAN.value:
-            from models.kan import KAN, KANLinear
+            from models.kan import KAN
             model = KAN(layers_hidden=[config["in_features"], *config["hidden_layers"], dataloader.dataset.dataset.img_channels])
         case ModelEnum.BASIC.value:
             from models.basic.basic import Basic
@@ -216,23 +217,6 @@ def main():
         "load": args.load
     }
 
-    use_wandb = True
-
-    if args.wandb_api_key is not None:
-        wandb.login(key=args.wandb_api_key)
-    elif os.path.exists('wandb.login'):
-        with open('wandb.login', 'r') as f:
-            wandb.login(key=f.read())
-    else:
-        logger.warning("Weights and Biases API key not provided. Logging to Weights and Biases will be disabled")
-        use_wandb = False
-
-    if use_wandb:
-        wandb.init(project=args.model, config=wandb_config)
-        logger.info("Weights and Biases initialized")
-    elif not os.path.exists('out'):
-        os.makedirs('out')
-
     logger.debug(f"Arguments: {args}")
 
     dataloader = get_dataloader(args)
@@ -249,14 +233,39 @@ def main():
         model.load_state_dict(torch.load(f"{args.save_dir}/{args.model}.pt"))
     logger.info("Model loaded")
 
-    if args.sweep and not args.wandb_api_key:
+    if args.sweep and not args.wandb_api_key and not os.path.exists('wandb.login'):
         logger.error("Hyperparameter sweep requested but Weights and Biases API key not provided. " +
               "Please provide an API key with the --wandb_api_key argument or in a file called 'wandb.login'")
         exit(1)
     elif args.sweep:
         logger.info("Running hyperparameter sweep, skipping regular training and testing")
-        execute_sweep(model, dataloader, config, args.device, args.verbose)
+        if args.wandb_api_key is not None:
+            wandb.login(key=args.wandb_api_key)
+        elif os.path.exists('wandb.login'):
+            with open('wandb.login', 'r') as f:
+                wandb.login(key=f.read())
+        else:
+            logger.error("Something went wrong logging in to Weights and Biases")
+            exit(1)
+        Sweeper(args.model, dataloader, config, args.device, args.verbose)
         exit(0)
+
+    use_wandb = True
+
+    if args.wandb_api_key is not None:
+        wandb.login(key=args.wandb_api_key)
+    elif os.path.exists('wandb.login'):
+        with open('wandb.login', 'r') as f:
+            wandb.login(key=f.read())
+    else:
+        logger.warning("Weights and Biases API key not provided. Logging to Weights and Biases will be disabled")
+        use_wandb = False
+
+    if use_wandb:
+        wandb.init(project=args.model, config=wandb_config)
+        logger.info("Weights and Biases initialized")
+    elif not os.path.exists('out'):
+        os.makedirs('out')
 
     if not args.skip_train:
         train(
