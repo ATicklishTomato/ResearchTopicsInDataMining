@@ -84,6 +84,9 @@ but the dashboard provides a more user-friendly interface.
 
 ## Snellius supercomputer usage
 To run the code on the Snellius supercomputer, you need to copy the code to the supercomputer using `scp`.
+
+**IMPORTANT:** Do not forget to include a `wandb.login` file in the project root with your Weights and Biases API key. Using the CLI flag on Snellius isn't advised.
+
 After copying the code, you can run the code using the following command:
 ```bash
 sbatch snellius_job.bash
