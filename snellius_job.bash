@@ -5,6 +5,7 @@
 #SBATCH --tasks-per-node 1
 #SBATCH --gpus=1
 #SBATCH --output=R-%x.%j.out
+
 module load 2022
 module load Miniconda3/4.12.0
 module load Python/3.10.4-GCCcore-11.3.0
@@ -25,7 +26,7 @@ fi
 unset __conda_setup
 # <<< conda initialize <<<
 
-conda init bash
+conda init bash python=3.10
 conda activate RTDM  # conda environment name
 
 echo 'Conda environment activated, installing requirements';
