@@ -240,10 +240,10 @@ def main():
     elif args.sweep:
         logger.info("Running hyperparameter sweep, skipping regular training and testing")
         if args.wandb_api_key is not None:
-            wandb.login(key=args.wandb_api_key)
+            wandb.login(key=args.wandb_api_key.strip())
         elif os.path.exists('wandb.login'):
             with open('wandb.login', 'r') as f:
-                wandb.login(key=f.read())
+                wandb.login(key=f.read().strip())
         else:
             logger.error("Something went wrong logging in to Weights and Biases")
             exit(1)
