@@ -29,7 +29,7 @@ def test(model,
 
             if use_wandb:
                 wandb.log({'total_loss': sum(losses.values()),
-                           "avg_loss": config["loss_fn"](model_output, ground_truth)['img_loss'],
+                           "avg_loss": config["loss_fn"](model_output, ground_truth)['loss'],
                            'psnr': metrics.peak_signal_to_noise_ratio(model_output, ground_truth)
                            })
 

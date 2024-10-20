@@ -263,7 +263,7 @@ def main():
         else:
             logger.error("Something went wrong logging in to Weights and Biases")
             exit(1)
-        Sweeper(args.model, dataloader, config, args.device, args.verbose)
+        Sweeper(args.model, dataloader, config, args.device, args.verbose, args.sweep_runs)
         exit(0)
 
     use_wandb = True

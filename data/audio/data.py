@@ -11,7 +11,6 @@ class AudioFile(Dataset):
         self.data = self.data.astype(np.float32)
         self.file_length = len(self.data)
         self.channels = 1
-        print("Rate: %d" % self.rate)
 
     def __len__(self):
         return 1

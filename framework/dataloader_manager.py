@@ -52,7 +52,7 @@ def get_dataloader(args):
             # Ensure there are enough files for the specified data_point
             if args.data_point < len(audio_files):
                 selected_audio = audio_files[args.data_point]
-                print(f"Selected audio file: {selected_audio}")
+                logger.info(f"Selected audio file: {selected_audio}")
             else:
                 # Choose the first audio file
                 selected_audio = audio_files[0]
