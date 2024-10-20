@@ -83,15 +83,16 @@ Weights & Biases results are also stored locally in the `wandb` directory for ev
 but the dashboard provides a more user-friendly interface.
 
 ## Snellius supercomputer usage
-To run the code on the Snellius supercomputer, you need to copy the code to the supercomputer using `scp`.
+To run the code on the Snellius supercomputer, you need to copy the repo code to the supercomputer using `scp`. 
 
 **IMPORTANT:** Do not forget to include a `wandb.login` file in the project root with your Weights and Biases API key. Using the CLI flag on Snellius isn't advised.
 
 After copying the code, you can run the code using the following command:
 ```bash
+dos2unix snellius_job.bash # to convert DOS line breaks to UNIX line breaks
 sbatch snellius_job.bash
 ```
-**NOTE:** Before running, ensure you've updated the relevant `SBATCH` flags in the `snellius_job.bash` script, as well as the python execution command.
+**NOTE:** Before running, ensure you've updated the relevant `SBATCH` flags in the `snellius_job.bash` script, as well as the python execution command. (This can be ignored for vanilla runs, as it currently works, we can modify this later)
 
 You can then check the status of jobs started by your user using the `squeue` command.
 ```bash
@@ -111,7 +112,6 @@ scancel <job_id>
 ### script setup
 The `snellius_job.bash` script is set up to run the code on the Snellius supercomputer.
 To pass parameters, we use `#SBATCH` flags in the script:
-- `#SBATCH --account=my_snellius_account` to specify the account to use
 - `#SBATCH --time=2:00:00` to specify the maximum time the job can run
 - `#SBATCH -p gpu_mig` to specify the partition to use. `gpu_mig` uses GPU partitions. `gpu`uses whole GPUs.
 - `#SBATCH -N 1` to specify the number of nodes to use

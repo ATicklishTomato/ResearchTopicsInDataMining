@@ -1,5 +1,4 @@
 #!/bin/bash
-#SBATCH --account=my_snellius_account
 #SBATCH --time=2:00:00
 #SBATCH -p gpu_mig
 #SBATCH -N 1
@@ -8,6 +7,8 @@
 #SBATCH --output=R-%x.%j.out
 module load 2022
 module load Miniconda3/4.12.0
+module load Python/3.10.4-GCCcore-11.3.0
+
 
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
@@ -31,5 +32,8 @@ echo 'Conda environment activated, installing requirements';
 pip install -r requirements.txt --user
 echo 'Requirements installed, starting experiment';
 
-echo 'Starting new experiment';
-python run.py --model siren --sweep
+echo "Print Python Version";
+python --version
+
+#echo 'Starting new experiment';
+python run.py --model mfn --sweep
