@@ -4,7 +4,7 @@ import os
 from torch.utils.data import DataLoader
 
 from data.audio.data import AudioFile
-from data import Reconstruction
+from data.images.reconstruction.dataset import Reconstruction
 from data.utils import Implicit2DWrapper, ImplicitAudioWrapper, PointCloud
 
 logger = logging.getLogger(__name__)

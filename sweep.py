@@ -133,11 +133,23 @@ class Sweeper:
                             train_loss += single_loss
 
                         train_losses.append(train_loss.item())
-                        wandb.log({'total_loss': train_loss,
-                                   "avg_loss": self.config["loss_fn"](model_output, ground_truth)['loss'],
-                                   'psnr': metrics.peak_signal_to_noise_ratio(model_output, ground_truth),
-                                   'epoch': epoch
-                                   })
+                        if config["datatype"] != "sdf":
+                            wandb.log({'total_loss': train_loss,
+                                       "avg_loss": self.config["loss_fn"](model_output, ground_truth)['loss'],
+                                       'psnr': metrics.peak_signal_to_noise_ratio(model_output, ground_truth),
+                                       'epoch': epoch
+                                       })
+                        else:
+                            chamfer, hausdorff, _, _, _, _ = metrics.chamfer_hausdorff_distance(
+                                model_output['model_out'], ground_truth['sdf']
+                            )
+
+                            wandb.log(losses + {
+                                'epoch': epoch,
+                                'iou': metrics.intersection_over_union(model_output, ground_truth),
+                                'chamfer': chamfer,
+                                'hausdorff': hausdorff
+                            })
 
                         # Backpropagation
                         optimizer.zero_grad()

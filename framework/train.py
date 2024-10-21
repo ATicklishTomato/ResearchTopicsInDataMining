@@ -95,13 +95,19 @@ def train(
                         os.path.join(wandb.run.dir, 'model_current.pth')
                     )
                     wandb.save(os.path.join(wandb.run.dir, 'model_current.pth'))
-                    config["summary_fn"](ground_truth, model_output, total_steps)
+                    if config["datatype"] == "sdf":
+                        config["summary_fn"](model, ground_truth, model_output, total_steps)
+                    else:
+                        config["summary_fn"](ground_truth, model_output, total_steps)
                 elif not total_steps % 500:
                     torch.save(
                         model.state_dict(),
                         './out/model_current.pth'
                     )
-                    config["summary_fn"](ground_truth, model_output, total_steps)
+                    if config["datatype"] == "sdf":
+                        config["summary_fn"](model, ground_truth, model_output, total_steps)
+                    else:
+                        config["summary_fn"](ground_truth, model_output, total_steps)
 
                 # Backpropagation
                 optimizer.zero_grad()

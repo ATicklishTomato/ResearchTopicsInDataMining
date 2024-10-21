@@ -1,4 +1,4 @@
-
+import logging
 import torch
 import numpy as np
 import scipy.ndimage
@@ -7,6 +7,8 @@ import math
 import matplotlib.colors as colors
 from torch.utils.data import Dataset
 from torchvision.transforms import Resize, Compose, ToTensor, Normalize
+
+logger = logging.getLogger(__name__)
 
 
 def get_mgrid(sidelen, dim=2):
@@ -225,16 +227,22 @@ class ImplicitAudioWrapper(Dataset):
         return {'idx': idx, 'coords': self.grid}, {'func': data, 'rate': rate, 'scale': scale}
 
 
+class SugarHelper:
+    def __init__(self):
+        self.channels = 1
+
 class PointCloud(Dataset):
     def __init__(self, pointcloud_path, on_surface_points, keep_aspect_ratio=True):
         super().__init__()
 
-        print("Loading point cloud")
+        logger.info("Loading point cloud")
         point_cloud = np.genfromtxt(pointcloud_path)
-        print("Finished loading point cloud")
+        logger.info("Finished loading point cloud")
 
         coords = point_cloud[:, :3]
         self.normals = point_cloud[:, 3:]
+
+        self.dataset = SugarHelper()
 
         # Reshape point cloud such that it lies in bounding box of (-1, 1) (distorts geometry, but makes for high
         # sample efficiency)
@@ -275,6 +283,8 @@ class PointCloud(Dataset):
 
         coords = np.concatenate((on_surface_coords, off_surface_coords), axis=0)
         normals = np.concatenate((on_surface_normals, off_surface_normals), axis=0)
+
+        logger.debug(f"Coords: {coords.shape}, Normals: {normals.shape}, SDF: {sdf.shape}")
 
         return {'coords': torch.from_numpy(coords).float()}, {'sdf': torch.from_numpy(sdf).float(),
                                                               'normals': torch.from_numpy(normals).float()}

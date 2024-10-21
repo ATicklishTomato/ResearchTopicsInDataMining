@@ -185,11 +185,11 @@ def get_configuration(args):
                 "hidden_layers": hidden_layers[args.data]
             }
         case "sdf":
-            from data.metrics import mean_squared_error
+            from data.metrics import sdf_loss
             from data.sdf.summary import sdf_summary
             return {
                 "datatype": "sdf",
-                "loss_fn": mean_squared_error,
+                "loss_fn": sdf_loss,
                 "summary_fn": sdf_summary,
                 "in_features": input_dimensions[args.data],
                 "out_features": output_dimensions[args.data],
