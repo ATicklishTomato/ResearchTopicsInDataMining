@@ -4,6 +4,7 @@ import wandb
 from matplotlib import pyplot as plt
 
 from data import utils, metrics
+from data.sdf.summary import sdf_summary
 
 logger = logging.getLogger(__name__)
 
@@ -28,10 +29,13 @@ def test(model,
             losses = config["loss_fn"](model_output, ground_truth)
 
             if use_wandb:
-                wandb.log({'total_loss': sum(losses.values()),
-                           "avg_loss": config["loss_fn"](model_output, ground_truth)['loss'],
-                           'psnr': metrics.peak_signal_to_noise_ratio(model_output, ground_truth)
-                           })
+                if config["datatype"] != "sdf":
+                    wandb.log({'total_loss': sum(losses.values()),
+                               "avg_loss": config["loss_fn"](model_output, ground_truth)['loss'].mean(),
+                               'psnr': metrics.peak_signal_to_noise_ratio(model_output, ground_truth)
+                               })
+                else:
+                    logger.info("SDF metrics are done in the summary function")
 
             if 'img' in ground_truth.keys():
                 logger.info("Plotting test image comparison")
@@ -81,5 +85,9 @@ def test(model,
                 else:
                     plt.savefig('./out/test_audio.png')
                 plt.close()
+            elif 'sdf' in ground_truth.keys():
+                logger.info("Plotting test SDF comparison")
+
+                sdf_summary(model, ground_truth, model_output, 0, test=True)
 
     logger.info("Testing complete")

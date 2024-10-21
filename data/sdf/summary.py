@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 import torch
 import wandb
@@ -5,6 +7,8 @@ from matplotlib import pyplot as plt
 
 from data.metrics import chamfer_hausdorff_distance, intersection_over_union
 from data.utils import get_mgrid, lin2img
+
+logger = logging.getLogger(__name__)
 
 def make_contour_plot(array_2d,mode='log'):
     fig, ax = plt.subplots(figsize=(2.75, 2.75), dpi=300)
@@ -34,13 +38,23 @@ def make_contour_plot(array_2d,mode='log'):
 
 
 
-def sdf_summary(model, ground_truth, predicted_distance, total_steps):
+def sdf_summary(model, ground_truth, predicted_distance, total_steps, test=False):
+    if test:
+        image_label = 'test'
+    else:
+        image_label = total_steps
+
     # Calculate the PSNR between the ground truth and predicted distance
     iou = intersection_over_union(predicted_distance, ground_truth)
     chamfer, hausdorff, _, _, _, _ = chamfer_hausdorff_distance(ground_truth["sdf"], predicted_distance["model_out"])
 
     if wandb.run is not None:
-        wandb.log({'iou': iou, 'chamfer': chamfer, 'hausdorff': hausdorff, 'total_steps': total_steps})
+        if not test:
+            wandb.log({'iou': iou, 'chamfer': chamfer, 'hausdorff': hausdorff, 'total_steps': total_steps})
+        else:
+            wandb.log({'iou': iou, 'chamfer': chamfer, 'hausdorff': hausdorff, 'test': True})
+    else:
+        logger.info(f"IoU: {iou}, Chamfer: {chamfer}, Hausdorff: {hausdorff}")
 
     slice_coords_2d = get_mgrid(512)
 
@@ -53,7 +67,9 @@ def sdf_summary(model, ground_truth, predicted_distance, total_steps):
     fig = make_contour_plot(sdf_values)
 
     if wandb.run is not None:
-        wandb.log({model.__class__.__name__ + "_" + total_steps + "_" + 'yz_sdf_slice': wandb.Image(fig)})
+        wandb.log({model.__class__.__name__ + "_" + image_label + "_" + 'yz_sdf_slice': wandb.Image(fig)})
+    else:
+        plt.savefig(f'./out/{model.__class__.__name__}_{image_label}_yz_sdf_slice.png')
 
     xz_slice_coords = torch.cat((slice_coords_2d[:, :1],
                                  torch.zeros_like(slice_coords_2d[:, :1]),
@@ -66,7 +82,9 @@ def sdf_summary(model, ground_truth, predicted_distance, total_steps):
     fig = make_contour_plot(sdf_values)
 
     if wandb.run is not None:
-        wandb.log({model.__class__.__name__ + "_" + total_steps + "_" + 'xz_sdf_slice': wandb.Image(fig)})
+        wandb.log({model.__class__.__name__ + "_" + image_label + "_" + 'xz_sdf_slice': wandb.Image(fig)})
+    else:
+        plt.savefig(f'./out/{model.__class__.__name__}_{image_label}_xz_sdf_slice.png')
 
     xy_slice_coords = torch.cat((slice_coords_2d[:, :2],
                                  -0.75 * torch.ones_like(slice_coords_2d[:, :1])), dim=-1)
@@ -78,4 +96,6 @@ def sdf_summary(model, ground_truth, predicted_distance, total_steps):
     fig = make_contour_plot(sdf_values)
 
     if wandb.run is not None:
-        wandb.log({model.__class__.__name__ + "_" + total_steps + "_" + 'xy_sdf_slice': wandb.Image(fig)})
+        wandb.log({model.__class__.__name__ + "_" + image_label + "_" + 'xy_sdf_slice': wandb.Image(fig)})
+    else:
+        plt.savefig(f'./out/{model.__class__.__name__}_{image_label}_xy_sdf_slice.png')
