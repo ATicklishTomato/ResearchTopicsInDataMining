@@ -59,10 +59,22 @@ def train(
                 losses = config["loss_fn"](model_output, ground_truth)
 
                 if use_wandb:
-                    wandb.log({'total_loss': sum(losses.values()),
-                               "avg_loss": config["loss_fn"](model_output, ground_truth)['loss'],
-                               'psnr': metrics.peak_signal_to_noise_ratio(model_output, ground_truth)
-                               })
+                    if config["datatype"] != "sdf":
+                        wandb.log({'total_loss': sum(losses.values()),
+                                   "avg_loss": config["loss_fn"](model_output, ground_truth)['loss'],
+                                   'psnr': metrics.peak_signal_to_noise_ratio(model_output, ground_truth)
+                                   })
+                    else:
+                        chamfer, hausdorff, _, _, _, _ = metrics.chamfer_hausdorff_distance(
+                            model_output['model_out'], ground_truth['sdf']
+                        )
+
+                        wandb.log(losses + {
+                            'total_steps': total_steps,
+                            'iou': metrics.intersection_over_union(model_output, ground_truth),
+                            'chamfer': chamfer,
+                            'hausdorff': hausdorff
+                        })
 
 
                 train_loss = 0.

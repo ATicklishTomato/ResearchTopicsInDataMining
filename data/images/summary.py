@@ -8,7 +8,7 @@ import wandb
 from matplotlib import pyplot as plt
 
 import data.utils as utils
-import data.images.differential_operators as differential_operators
+import data as differential_operators
 import data.metrics as metrics
 
 def cond_mkdir(path):

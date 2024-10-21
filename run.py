@@ -26,28 +26,32 @@ class ModelEnum(Enum):
 input_dimensions = {
     'images': 2,
     'audio': 1,
+    'sdf': 3,
 }
 
 output_dimensions = {
     'images': 1,
     'audio': 1,
+    'sdf': 1,
 }
 
 hidden_dimensions = {
     'images': 16,
     'audio': 16,
+    'sdf': 16
 }
 
 hidden_layers = {
     'images': [16,16],
-    'audio': [16,16]
+    'audio': [16,16],
+    'sdf': [16,16]
 }
 
 def parse_args():
     parser = ArgumentParser(description='Train and test a neural fields model on a chosen dataset with certain parameters')
     parser.add_argument('--data',
                         type=str,
-                        choices=['images', 'audio'],
+                        choices=['images', 'audio', 'sdf'],
                         default='images',
                         help='Type of data to train and test on. Default is images')
     parser.add_argument('--data_point',
@@ -155,7 +159,7 @@ def get_configuration(args):
     match args.data:
         case "images":
             from data.metrics import mean_squared_error
-            from data.images.summary import image_summary
+            from data import image_summary
             from functools import partial
             resolution = (500, 500)
             return {
@@ -175,6 +179,18 @@ def get_configuration(args):
                 "datatype": "audio",
                 "loss_fn": mean_squared_error,
                 "summary_fn": audio_summary,
+                "in_features": input_dimensions[args.data],
+                "out_features": output_dimensions[args.data],
+                "hidden_dim": hidden_dimensions[args.data],
+                "hidden_layers": hidden_layers[args.data]
+            }
+        case "sdf":
+            from data.metrics import mean_squared_error
+            from data.sdf.summary import sdf_summary
+            return {
+                "datatype": "sdf",
+                "loss_fn": mean_squared_error,
+                "summary_fn": sdf_summary,
                 "in_features": input_dimensions[args.data],
                 "out_features": output_dimensions[args.data],
                 "hidden_dim": hidden_dimensions[args.data],

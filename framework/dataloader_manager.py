@@ -4,8 +4,8 @@ import os
 from torch.utils.data import DataLoader
 
 from data.audio.data import AudioFile
-from data.images.reconstruction.dataset import Reconstruction
-from data.utils import Implicit2DWrapper, ImplicitAudioWrapper
+from data import Reconstruction
+from data.utils import Implicit2DWrapper, ImplicitAudioWrapper, PointCloud
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,30 @@ def get_dataloader(args):
 
             return DataLoader(coord_dataset, shuffle=True, batch_size=args.batch_size, pin_memory=True,
                                     num_workers=0)
+    elif args.data == "sdf":
+        logger.debug(f"Getting dataloader for SDF data")
 
+        data_path = f"data/sdf/files/"
+
+        if os.path.isdir(data_path):
+            # Sort the .NPY files in the data_path
+            sdf_files = sorted([f for f in os.listdir(data_path) if f.endswith(".xyz")])
+
+            logger.debug(f"Found {len(sdf_files)} SDF files: {sdf_files}")
+
+            # Ensure there are enough files for the specified data_point
+            if args.data_point < len(sdf_files):
+                selected_sdf = sdf_files[args.data_point]
+                logger.info(f"Selected SDF file: {selected_sdf}")
+            else:
+                # Choose the first SDF file
+                selected_sdf = sdf_files[0]
+
+            sdf_dataset = PointCloud(os.path.join(data_path, selected_sdf), on_surface_points=args.batch_size)
+
+            logger.debug(f"Data point {args.data_point} selected, using SDF file {selected_sdf}")
+
+            return DataLoader(sdf_dataset, shuffle=True, batch_size=1, pin_memory=True, num_workers=0)
     else:
         logger.error(f"Data type {args.data} not recognized")
         raise ValueError(f"Data type {args.data} not recognized")
