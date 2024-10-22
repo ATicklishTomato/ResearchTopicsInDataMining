@@ -15,7 +15,7 @@ Process some integers.
 
 options:
   -h, --help            show this help message and exit
-  --data {images}       Type of data to train and test on. Default is images
+  --data {images, audio}       Type of data to train and test on. Default is images
   --model {siren,mfn,fourier,kan,basic}
                         Type of model to use. Options are for SIREN, Multiplicative Filter Networks, Fourier Filter Banks, Kolmogorov-Arnold Networks, and a basic coordinate-MLP,  
                         respectively. Default is basic
@@ -36,10 +36,9 @@ options:
 ```
 
 ### SIREN
-To train the SIREN model on image data, use:
-```
-python .\run.py --model siren
-```
+To train the SIREN model we should use a learning rate of 1e-4.
+Reconstructing images: `python .\run.py --model siren --data images --lr 1e-4`
+Reconstructing audio: `python .\run.py --model siren --data audio --lr 1e-4`
 
 ## Analyzing results
 The training loop creates model summaries every couple hundred epochs.

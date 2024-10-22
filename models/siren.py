@@ -55,6 +55,7 @@ class SIREN(nn.Module):
         if self.weight_init is not None:
             self.net.apply(self.weight_init)
 
+        print(self)
         logger.info("SIREN model initialized")
 
     def forward(self, model_input):

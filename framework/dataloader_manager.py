@@ -2,8 +2,6 @@ import logging
 import os
 
 from torch.utils.data import DataLoader
-from data.images.reconstruction.dataset import Reconstruction
-from data.images.utils import Implicit2DWrapper
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +11,8 @@ def get_dataloader(args):
 
     if args.data == "images":
         logger.debug(f"Getting dataloader for image reconstruction")
+        from data.images.reconstruction.dataset import Reconstruction
+        from data.images.utils import Implicit2DWrapper
 
         data_path = f"data/images/reconstruction/files/{args.data_fidelity}"
 
@@ -25,10 +25,10 @@ def get_dataloader(args):
                 selected_image = image_files[args.data_point]
                 print(f"Selected image file: {selected_image}")
 
-                img_dataset = Reconstruction(
+                audio_dataset = Reconstruction(
                     path=os.path.join(data_path, selected_image)
                 )
-                coord_dataset = Implicit2DWrapper(img_dataset, sidelength=500, compute_diff='all')
+                coord_dataset = Implicit2DWrapper(audio_dataset, sidelength=500, compute_diff='all')
                 return DataLoader(coord_dataset, shuffle=True, batch_size=args.batch_size, pin_memory=True, num_workers=0)
             else:
                 logger.error(f"Data point {args.data_point} is out of range. Only {len(image_files)} files found.")
@@ -36,7 +36,22 @@ def get_dataloader(args):
         else:
             logger.error(f"Data path {data_path} does not exist.")
             raise FileNotFoundError(f"Data path {data_path} does not exist.")
+    elif args.data == "audio":
+        logger.debug(f"Getting dataloader for audio reconstruction")
+        from data.audio.reconstruction.dataset import Reconstruction
+        from data.audio.utils import ImplicitAudioWrapper
 
+        audio_file = f"data/audio/gt_bach.wav"
+
+        if os.path.isfile(audio_file):
+            audio_dataset = Reconstruction(
+                path=audio_file
+            )
+            coord_dataset = ImplicitAudioWrapper(audio_dataset)
+            return DataLoader(coord_dataset, shuffle=True, batch_size=args.batch_size, pin_memory=True, num_workers=0)
+        else:
+            logger.error(f"Data path {audio_file} does not exist.")
+            raise FileNotFoundError(f"Data path {audio_file} does not exist.")
     else:
         logger.error(f"Data type {args.data} not recognized")
         raise ValueError(f"Data type {args.data} not recognized")

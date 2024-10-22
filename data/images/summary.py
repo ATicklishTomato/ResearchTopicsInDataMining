@@ -16,6 +16,7 @@ def cond_mkdir(path):
 
 def summary(
     image_resolution,
+    model_input,
     ground_truth,
     model_output, 
     writer: SummaryWriter, 

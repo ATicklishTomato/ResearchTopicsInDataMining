@@ -79,7 +79,7 @@ def train(
                         model.state_dict(),
                         os.path.join(checkpoints_dir, 'model_current.pth')
                     )
-                    config["summary_fn"](ground_truth, model_output, writer, total_steps)
+                    config["summary_fn"](model_input, ground_truth, model_output, writer, total_steps)
 
                 # Backpropagation
                 optimizer.zero_grad()

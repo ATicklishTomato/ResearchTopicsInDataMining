@@ -21,14 +21,6 @@ class ModelEnum(Enum):
     KAN = 'kan'
     BASIC = 'basic'
 
-input_dimensions = {
-    'images': 2,
-}
-
-output_dimensions = {
-    'images': 1,
-}
-
 hidden_dimensions = {
     'images': 16,
 }
@@ -41,7 +33,7 @@ def parse_args():
     parser = ArgumentParser(description='Process some integers.')
     parser.add_argument('--data',
                         type=str,
-                        choices=['images'],
+                        choices=['images', 'audio'],
                         default='images',
                         help='Type of data to train and test on. Default is images')
     parser.add_argument('--data_point',
@@ -144,11 +136,20 @@ def get_configuration(args):
             return {
                 "loss_fn": mean_squared_error, 
                 "summary_fn": partial(summary, resolution),
-                "resolution": resolution,
-                "in_features": input_dimensions[args.data],
-                "out_features": output_dimensions[args.data],
-                "hidden_dim": hidden_dimensions[args.data],
-                "hidden_layers": hidden_layers[args.data]
+                "in_features": 2,
+                "hidden_dim": hidden_dimensions[args.data],     # This used to be 256 for SIREN
+                "hidden_layers": hidden_layers[args.data]       # This used to be 3 for SIREN
+            }
+        case "audio":
+            from data.audio.metrics import function_mse
+            from data.audio.summary import summary
+            from functools import partial
+            return {
+                "loss_fn": function_mse, 
+                "summary_fn": partial(summary, os.path.join('./logs', args.experiment_name)),
+                "in_features": 1,
+                "hidden_dim": 256,
+                "hidden_layers": 3
             }
         case _:
             logger.error(f"Data {args.data} not recognized")
@@ -158,19 +159,22 @@ def get_model(args, dataloader, config):
     match args.model:
         case ModelEnum.MFN.value:
             from models.mfn import GaborNet
-            model = GaborNet(in_size=config["in_features"], hidden_size=config["hidden_dim"], out_size=dataloader.dataset.dataset.img_channels, n_layers=3, input_scale=256, weight_scale=1)
+            model = GaborNet(in_size=config["in_features"], hidden_size=config["hidden_dim"], out_size=dataloader.dataset.dataset.output_dimensionality, n_layers=3, input_scale=256, weight_scale=1)
         case ModelEnum.FFB.value:
             from models.NFFB.img.NFFB_2d import NFFB
-            model = NFFB(config["in_features"], dataloader.dataset.dataset.img_channels)
+            model = NFFB(config["in_features"], dataloader.dataset.dataset.output_dimensionality)
         case ModelEnum.KAN.value:
             from models.kan import KAN, KANLinear
-            model = KAN(layers_hidden=[config["in_features"], *config["hidden_layers"], dataloader.dataset.dataset.img_channels])
+            model = KAN(layers_hidden=[config["in_features"], *config["hidden_layers"], dataloader.dataset.dataset.output_dimensionality])
         case ModelEnum.BASIC.value:
             from models.basic.basic import Basic
-            model = Basic(input_dimensions[args.data], output_dimensions[args.data])
+            model = Basic(config["in_features"], dataloader.dataset.dataset.output_dimensionality)
         case ModelEnum.SIREN.value:
             from models.siren import SIREN
-            model = SIREN(in_features=config["in_features"], out_features=dataloader.dataset.dataset.img_channels, hidden_features=config["hidden_dim"])
+            model = SIREN(
+                in_features=config["in_features"], 
+                out_features=dataloader.dataset.dataset.output_dimensionality
+            )
         case _:
             logger.error(f"Model {args.model} not recognized")
             raise ValueError(f"Model {args.model} not recognized")
