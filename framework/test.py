@@ -1,9 +1,13 @@
 import logging
+import os
+
 import torch
 import wandb
 from matplotlib import pyplot as plt
+from scipy.io import wavfile
 
 from data import utils, metrics
+from data.audio.summary import audio_summary
 from data.sdf.summary import sdf_summary
 
 logger = logging.getLogger(__name__)
@@ -65,14 +69,10 @@ def test(model,
                 plt.close(fig)
             elif 'func' in ground_truth.keys():
                 logger.info("Plotting test audio comparison")
-                # Get the numpy arrays for the audio
-                ground_truth = ground_truth['func'].squeeze(0).detach().cpu().numpy()
-                predicted = model_output['model_out'].squeeze(0).detach().cpu().numpy()
-
                 # Plot the audio
                 plt.figure(figsize=(12, 6))
-                plt.plot(ground_truth, label='Ground Truth')
-                plt.plot(predicted, label='Predicted Audio')
+                plt.plot(ground_truth['func'].squeeze(0).detach().cpu().numpy(), label='Ground Truth')
+                plt.plot(model_output['model_out'].squeeze(0).detach().cpu().numpy(), label='Predicted Audio')
                 plt.legend()
                 plt.title('Ground Truth vs Predicted Audio')
                 plt.xlabel('Time')
@@ -85,9 +85,11 @@ def test(model,
                 else:
                     plt.savefig('./out/test_audio.png')
                 plt.close()
+
+                audio_summary(model_input, ground_truth, model_output, None, prefix='test_')
             elif 'sdf' in ground_truth.keys():
                 logger.info("Plotting test SDF comparison")
 
-                sdf_summary(model, ground_truth, model_output, 0, test=True)
+                sdf_summary(model, ground_truth, model_output, None, test=True)
 
     logger.info("Testing complete")

@@ -74,7 +74,7 @@ class Implicit2DWrapper(Dataset):
             grady = scipy.ndimage.sobel(img.numpy(), axis=2).sum(axis=0)  # Sum over channels
             laplace = scipy.ndimage.laplace(img.numpy()).sum(axis=0)
 
-        img = img.permute(1, 2, 0).view(-1, self.dataset.channels)
+        img = img.permute(1, 2, 0).view(-1, self.dataset.output_dimensionality)
         in_dict = {'idx': idx, 'coords': self.mgrid}
         gt_dict = {'img': img}
 
@@ -110,7 +110,7 @@ class Implicit2DWrapper(Dataset):
     def get_item_small(self, idx):
         img = self.transform(self.dataset[idx])
         spatial_img = img.clone()
-        img = img.permute(1, 2, 0).view(-1, self.dataset.channels)
+        img = img.permute(1, 2, 0).view(-1, self.dataset.output_dimensionality)
 
         gt_dict = {'img': img}
 

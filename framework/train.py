@@ -97,6 +97,8 @@ def train(
                     wandb.save(os.path.join(wandb.run.dir, 'model_current.pth'))
                     if config["datatype"] == "sdf":
                         config["summary_fn"](model, ground_truth, model_output, total_steps)
+                    elif config["datatype"] == "audio":
+                        config["summary_fn"](model_input, ground_truth, model_output, total_steps)
                     else:
                         config["summary_fn"](ground_truth, model_output, total_steps)
                 elif not total_steps % 500:
@@ -106,6 +108,8 @@ def train(
                     )
                     if config["datatype"] == "sdf":
                         config["summary_fn"](model, ground_truth, model_output, total_steps)
+                    elif config["datatype"] == "audio":
+                        config["summary_fn"](model_input, ground_truth, model_output, total_steps)
                     else:
                         config["summary_fn"](ground_truth, model_output, total_steps)
 

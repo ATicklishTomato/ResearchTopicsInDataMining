@@ -21,30 +21,51 @@ class ModelEnum(Enum):
     MFN = 'mfn'
     FFB = 'fourier'
     KAN = 'kan'
-    BASIC = 'basic'
-
-input_dimensions = {
-    'images': 2,
-    'audio': 1,
-    'sdf': 3,
-}
-
-output_dimensions = {
-    'images': 1,
-    'audio': 1,
-    'sdf': 1,
-}
 
 hidden_dimensions = {
-    'images': 16,
-    'audio': 16,
-    'sdf': 16
+    'siren': {
+        'images': 256,
+        'audio': 256,
+        'sdf': 256
+    },
+    'mfn': {
+        'images': 16,
+        'audio': 16,
+        'sdf': 16
+    },
+    'fourier': {
+        'images': 16,
+        'audio': 16,
+        'sdf': 16
+    },
+    'kan': {
+        'images': 16,
+        'audio': 16,
+        'sdf': 16
+    }
 }
 
 hidden_layers = {
-    'images': [16,16],
-    'audio': [16,16],
-    'sdf': [16,16]
+    'siren': {
+        'images': 3,
+        'audio': 3,
+        'sdf': 3
+    },
+    'mfn': {
+        'images': 3,
+        'audio': 3,
+        'sdf': 3
+    },
+    'fourier': {
+        'images': 3,
+        'audio': 3,
+        'sdf': 3
+    },
+    'kan': {
+        'images': 3,
+        'audio': 3,
+        'sdf': 3
+    }
 }
 
 def parse_args():
@@ -66,10 +87,10 @@ def parse_args():
     parser.add_argument('--model',
                         type=str,
                         choices=[model.value for model in ModelEnum],
-                        default='basic',
+                        default='siren',
                         help='Type of model to use. Options are for SIREN, Multiplicative Filter Networks, ' +
                              'Fourier Filter Banks, Kolmogorov-Arnold Networks, and a basic coordinate-MLP, ' +
-                             'respectively. Default is basic')
+                             'respectively. Default is SIREN')
     parser.add_argument('--sweep',
                         action='store_true',
                         help='Run a hyperparameter sweep. Default is False. Note: This will override ' +
@@ -167,10 +188,9 @@ def get_configuration(args):
                 "loss_fn": mean_squared_error, 
                 "summary_fn": partial(image_summary, resolution),
                 "resolution": resolution,
-                "in_features": input_dimensions[args.data],
-                "out_features": output_dimensions[args.data],
-                "hidden_dim": hidden_dimensions[args.data],
-                "hidden_layers": hidden_layers[args.data]
+                "in_features": 2,
+                "hidden_dim": hidden_dimensions[args.model][args.data],
+                "hidden_layers": hidden_layers[args.model][args.data]
             }
         case "audio":
             from data.metrics import mean_squared_error
@@ -179,10 +199,9 @@ def get_configuration(args):
                 "datatype": "audio",
                 "loss_fn": mean_squared_error,
                 "summary_fn": audio_summary,
-                "in_features": input_dimensions[args.data],
-                "out_features": output_dimensions[args.data],
-                "hidden_dim": hidden_dimensions[args.data],
-                "hidden_layers": hidden_layers[args.data]
+                "in_features": 1,
+                "hidden_dim": hidden_dimensions[args.model][args.data],
+                "hidden_layers": hidden_layers[args.model][args.data]
             }
         case "sdf":
             from data.metrics import sdf_loss
@@ -191,10 +210,10 @@ def get_configuration(args):
                 "datatype": "sdf",
                 "loss_fn": sdf_loss,
                 "summary_fn": sdf_summary,
-                "in_features": input_dimensions[args.data],
-                "out_features": output_dimensions[args.data],
-                "hidden_dim": hidden_dimensions[args.data],
-                "hidden_layers": hidden_layers[args.data]
+                "in_features": 2,
+                "out_features": 1,
+                "hidden_dim": hidden_dimensions[args.model][args.data],
+                "hidden_layers": hidden_layers[args.model][args.data]
             }
         case _:
             logger.error(f"Data {args.data} not recognized")
@@ -204,19 +223,27 @@ def get_model(args, dataloader, config):
     match args.model:
         case ModelEnum.MFN.value:
             from models.mfn import GaborNet
-            model = GaborNet(in_size=config["in_features"], hidden_size=config["hidden_dim"], out_size=dataloader.dataset.dataset.channels, n_layers=3, input_scale=256, weight_scale=1)
+            model = GaborNet(in_size=config["in_features"],
+                             hidden_size=config["hidden_dim"],
+                             out_size=dataloader.dataset.dataset.output_dimensionality,
+                             n_layers=config["hidden_layers"],
+                             input_scale=256,
+                             weight_scale=1
+                             )
         case ModelEnum.FFB.value:
             from models.NFFB.img.NFFB_2d import NFFB
-            model = NFFB(config["in_features"], dataloader.dataset.dataset.channels)
+            model = NFFB(config["in_features"], dataloader.dataset.dataset.output_dimensionality)
         case ModelEnum.KAN.value:
             from models.kan import KAN
-            model = KAN(layers_hidden=[config["in_features"], *config["hidden_layers"], dataloader.dataset.dataset.channels])
-        case ModelEnum.BASIC.value:
-            from models.basic.basic import Basic
-            model = Basic(input_dimensions[args.data], output_dimensions[args.data])
+            model = KAN(layers_hidden=[config["in_features"],
+                                       *config["hidden_layers"],
+                                       dataloader.dataset.dataset.output_dimensionality])
         case ModelEnum.SIREN.value:
             from models.siren import SIREN
-            model = SIREN(in_features=config["in_features"], out_features=dataloader.dataset.dataset.channels, hidden_features=config["hidden_dim"])
+            model = SIREN(in_features=config["in_features"],
+                          out_features=dataloader.dataset.dataset.output_dimensionality,
+                          hidden_features=config["hidden_dim"],
+                          num_hidden_layers=config["hidden_layers"])
         case _:
             logger.error(f"Model {args.model} not recognized")
             raise ValueError(f"Model {args.model} not recognized")

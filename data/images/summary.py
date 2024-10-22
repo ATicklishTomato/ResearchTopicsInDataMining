@@ -8,8 +8,9 @@ import wandb
 from matplotlib import pyplot as plt
 
 import data.utils as utils
-import data as differential_operators
 import data.metrics as metrics
+from data.images import differential_operators
+
 
 def cond_mkdir(path):
     if not os.path.exists(path):
@@ -24,11 +25,10 @@ def make_image(tensor, filename, squeeze=True, permute=None):
     plt.axis('off')
     if wandb.run is not None:
         plt.savefig(os.path.join(wandb.run.dir, filename))
+        wandb.log({filename: wandb.Image(plt)})
     else:
         plt.savefig('./out/' + filename)
 
-    if wandb.run is not None:
-        wandb.log({filename: wandb.Image(plt)})
 
 def image_summary(
     image_resolution,

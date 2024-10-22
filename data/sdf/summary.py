@@ -50,7 +50,7 @@ def sdf_summary(model, ground_truth, predicted_distance, total_steps, test=False
 
     if wandb.run is not None:
         if not test:
-            wandb.log({'iou': iou, 'chamfer': chamfer, 'hausdorff': hausdorff, 'total_steps': total_steps})
+            wandb.log({'iou': iou, 'chamfer': chamfer, 'hausdorff': hausdorff}, step=total_steps)
         else:
             wandb.log({'iou': iou, 'chamfer': chamfer, 'hausdorff': hausdorff, 'test': True})
     else:

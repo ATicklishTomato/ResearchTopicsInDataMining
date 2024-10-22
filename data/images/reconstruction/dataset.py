@@ -8,11 +8,11 @@ class Reconstruction(Dataset):
         
         # Determine the number of channels based on the image mode
         if self.img.mode == 'L':  # Grayscale image
-            self.channels = 1
+            self.output_dimensionality = 1
         elif self.img.mode == 'RGB':  # RGB image
-            self.channels = 3
+            self.output_dimensionality = 3
         elif self.img.mode == 'RGBA':  # RGBA image
-            self.channels = 4
+            self.output_dimensionality = 4
         else:
             raise ValueError(f"Unsupported image mode: {self.img.mode}")
 
