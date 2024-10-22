@@ -39,9 +39,9 @@ hidden_dimensions = {
         'sdf': 16
     },
     'kan': {
-        'images': 16,
-        'audio': 16,
-        'sdf': 16
+        'images': [16, 16],
+        'audio': [16, 16],
+        'sdf': [16, 16]
     }
 }
 
@@ -62,9 +62,9 @@ hidden_layers = {
         'sdf': 3
     },
     'kan': {
-        'images': 3,
-        'audio': 3,
-        'sdf': 3
+        'images': len(hidden_dimensions['kan']['images']),
+        'audio': len(hidden_dimensions['kan']['audio']),
+        'sdf': len(hidden_dimensions['kan']['sdf'])
     }
 }
 
@@ -236,7 +236,7 @@ def get_model(args, dataloader, config):
         case ModelEnum.KAN.value:
             from models.kan import KAN
             model = KAN(layers_hidden=[config["in_features"],
-                                       *config["hidden_layers"],
+                                       *config["hidden_dim"],
                                        dataloader.dataset.dataset.output_dimensionality])
         case ModelEnum.SIREN.value:
             from models.siren import SIREN

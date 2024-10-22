@@ -113,6 +113,11 @@ def train(
                     else:
                         config["summary_fn"](ground_truth, model_output, total_steps)
 
+                if train_loss.isnan():
+                    logger.error("Loss is NaN")
+                    pbar.close()
+                    return
+
                 # Backpropagation
                 optimizer.zero_grad()
                 train_loss.backward()
