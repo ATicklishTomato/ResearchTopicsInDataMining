@@ -229,7 +229,7 @@ class ImplicitAudioWrapper(Dataset):
 
 class SugarHelper:
     def __init__(self):
-        self.channels = 1
+        self.output_dimensionality = 1
 
 class PointCloud(Dataset):
     def __init__(self, pointcloud_path, on_surface_points, keep_aspect_ratio=True):

@@ -90,6 +90,6 @@ def test(model,
             elif 'sdf' in ground_truth.keys():
                 logger.info("Plotting test SDF comparison")
 
-                sdf_summary(model, ground_truth, model_output, None, test=True)
+                sdf_summary(model, model_input, None, test=True)
 
     logger.info("Testing complete")

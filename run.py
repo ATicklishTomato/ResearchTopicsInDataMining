@@ -210,7 +210,7 @@ def get_configuration(args):
                 "datatype": "sdf",
                 "loss_fn": sdf_loss,
                 "summary_fn": sdf_summary,
-                "in_features": 2,
+                "in_features": 3,
                 "out_features": 1,
                 "hidden_dim": hidden_dimensions[args.model][args.data],
                 "hidden_layers": hidden_layers[args.model][args.data]

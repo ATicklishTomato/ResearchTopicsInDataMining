@@ -1,3 +1,4 @@
+import logging
 import os
 
 import numpy as np
@@ -8,6 +9,7 @@ from torchmetrics import JaccardIndex
 from torcheval.metrics import PeakSignalNoiseRatio
 from scipy.spatial import cKDTree as KDTree
 
+logger = logging.getLogger(__name__)
 
 def mean_squared_error(model_output, gt):
     if 'img' in gt.keys():
@@ -77,8 +79,10 @@ def intersection_over_union(model_output, gt, n_classes=2):
     Returns:
         iou (float): The Intersection over Union.
     """
+    logger.debug(f"ground truth type: {type(gt)}, shape: {gt.shape}")
+    logger.debug(f"model output type: {type(model_output)}, shape: {model_output.shape}")
     jaccard = JaccardIndex(num_classes=n_classes, task='multiclass')
-    return jaccard(model_output['model_out'], gt['sdf']).detach().cpu().item()
+    return jaccard(model_output, gt).detach().cpu().item()
 
 
 def chamfer_hausdorff_distance(recon_points, gt_points, eval_type="Default"):
