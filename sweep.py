@@ -15,7 +15,6 @@ class ModelEnum(Enum):
     MFN = 'mfn'
     FFB = 'fourier'
     KAN = 'kan'
-    BASIC = 'basic'
 
 
 def get_optimizer(model, wandb_config):
@@ -62,7 +61,7 @@ class Sweeper:
                     'values': [1e-6, 1e-5, 1e-4, 1e-3]
                 },
                 'optimizer': {
-                    'values': ['adam', 'sgd']
+                    'value': 'adam'
                 }
             }
         }
@@ -75,87 +74,87 @@ class Sweeper:
 
         wandb.agent(self.sweep_id, function=self.train, count=sweep_runs)
 
-
     def get_model(self, wandb_config):
         match self.model_name:
             case ModelEnum.MFN.value:
                 from models.mfn import GaborNet
                 model = GaborNet(in_size=self.config["in_features"],
                                  hidden_size=self.config["hidden_dim"],
-                                 out_size=self.dataloader.dataset.dataset.channels,
+                                 out_size=self.dataloader.dataset.dataset.output_dimensionality,
                                  n_layers=wandb_config.num_layers,
                                  input_scale=wandb_config.hidden_size,
-                                 weight_scale=1)
+                                 weight_scale=1
+                                 )
             case ModelEnum.FFB.value:
                 from models.NFFB.img.NFFB_2d import NFFB
-                model = NFFB(self.config["in_features"], self.dataloader.dataset.dataset.channels)
+                model = NFFB(self.config["in_features"], self.dataloader.dataset.dataset.output_dimensionality)
             case ModelEnum.KAN.value:
                 from models.kan import KAN
-                model = KAN(layers_hidden=[self.config["in_features"], *[wandb_config.hidden_size] * (wandb_config.num_layers + 2),
-                                           self.dataloader.dataset.dataset.channels])
+                model = KAN(layers_hidden=[self.config["in_features"],
+                                           *[wandb_config.hidden_size] * (wandb_config.num_layers + 2),
+                                           self.dataloader.dataset.dataset.output_dimensionality])
             case ModelEnum.SIREN.value:
                 from models.siren import SIREN
                 model = SIREN(in_features=self.config["in_features"],
-                              out_features=self.dataloader.dataset.dataset.channels,
-                              hidden_features=wandb.config.hidden_size,
-                              num_hidden_layers=wandb.config.num_layers)
+                              out_features=self.dataloader.dataset.dataset.output_dimensionality,
+                              hidden_features=wandb_config.hidden_size,
+                              num_hidden_layers=wandb_config.num_layers)
             case _:
                 logger.error(f"Model {self.model_name} not recognized")
                 raise ValueError(f"Model {self.model_name} not recognized")
         return model
 
     def train(self, config=None):
-        with wandb.init(config=config):
-            # Set up logging, checkpoints and summaries
-            logger.setLevel(self.log_level)
-            logger.info(f"Training {self.model_name}")
+        try:
+            with wandb.init(config=config):
+                # Set up logging, checkpoints and summaries
+                logger.setLevel(self.log_level)
+                logger.info(f"Training {self.model_name}")
 
-            wandb_config = wandb.config
+                wandb_config = wandb.config
 
-            model = self.get_model(wandb_config).to(self.device)
-            optimizer = get_optimizer(model, wandb_config)
+                model = self.get_model(wandb_config).to(self.device)
+                optimizer = get_optimizer(model, wandb_config)
 
-            with tqdm(total=len(self.dataloader) * wandb_config.epochs) as pbar:
-                train_losses = []
-                for epoch in range(wandb_config.epochs):
-                    for step, (model_input, ground_truth) in enumerate(self.dataloader):
-                        model_input = {key: value.to(self.device) for key, value in model_input.items()}
-                        ground_truth = {key: value.to(self.device) for key, value in ground_truth.items()}
+                with tqdm(total=len(self.dataloader) * wandb_config.epochs) as pbar:
+                    train_losses = []
+                    for epoch in range(wandb_config.epochs):
+                        for step, (model_input, ground_truth) in enumerate(self.dataloader):
+                            model_input = {key: value.to(self.device) for key, value in model_input.items()}
+                            ground_truth = {key: value.to(self.device) for key, value in ground_truth.items()}
 
-                        logging.debug(f"Model input: {model_input}")
-                        model_output = model(model_input)
-                        losses = self.config["loss_fn"](model_output, ground_truth)
+                            logging.debug(f"Model input: {model_input}")
+                            model_output = model(model_input)
+                            losses = self.config["loss_fn"](model_output, ground_truth)
 
-                        train_loss = 0.
-                        for loss_name, loss in losses.items():
-                            single_loss = loss.mean()
-                            wandb.log({loss_name: single_loss, 'epoch': epoch})
-                            train_loss += single_loss
+                            train_loss = 0.
+                            for loss_name, loss in losses.items():
+                                single_loss = loss.mean()
+                                wandb.log({loss_name: single_loss, 'epoch': epoch})
+                                train_loss += single_loss
 
-                        train_losses.append(train_loss.item())
-                        if config["datatype"] != "sdf":
-                            wandb.log({'total_loss': train_loss,
-                                       "avg_loss": self.config["loss_fn"](model_output, ground_truth)['loss'],
-                                       'psnr': metrics.peak_signal_to_noise_ratio(model_output, ground_truth),
-                                       'epoch': epoch
-                                       })
-                        else:
-                            chamfer, hausdorff, _, _, _, _ = metrics.chamfer_hausdorff_distance(
-                                model_output['model_out'], ground_truth['sdf']
-                            )
+                            train_losses.append(train_loss.item())
+                            if self.config["datatype"] != "sdf":
+                                wandb.log({'total_loss': train_loss,
+                                           "avg_loss": self.config["loss_fn"](model_output, ground_truth)['loss'],
+                                           'psnr': metrics.peak_signal_to_noise_ratio(model_output, ground_truth),
+                                           'epoch': epoch
+                                           })
+                            else:
+                                wandb.log(losses + {
+                                    'epoch': epoch,
+                                    'total_loss': train_loss,
+                                    'avg_loss': train_loss / len(losses),
+                                })
 
-                            wandb.log(losses + {
-                                'epoch': epoch,
-                                'iou': metrics.intersection_over_union(model_output, ground_truth),
-                                'chamfer': chamfer,
-                                'hausdorff': hausdorff
-                            })
+                            # Backpropagation
+                            optimizer.zero_grad()
+                            train_loss.backward()
+                            optimizer.step()
 
-                        # Backpropagation
-                        optimizer.zero_grad()
-                        train_loss.backward()
-                        optimizer.step()
+                            pbar.update(1)
 
-                        pbar.update(1)
-
-            logger.info("Training complete")
+                logger.info("Training complete")
+        except Exception as e:
+            logger.error(f"Error in training: {e}")
+            return

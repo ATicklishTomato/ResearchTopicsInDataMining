@@ -35,7 +35,7 @@ def train(
     with tqdm(total=len(dataloader) * epochs) as pbar:
         train_losses = []
         for epoch in range(epochs):
-            if not epoch % 25 and epoch and use_wandb:
+            if epoch % 1000 == 0 and epoch != 0 and epoch and use_wandb:
                 # Make a model checkpoint.
                 torch.save(
                     model.state_dict(),
@@ -88,7 +88,7 @@ def train(
                 if use_wandb:
                     wandb.log({'total_loss': train_loss, 'total_steps': total_steps})
 
-                if not total_steps % 500 and use_wandb:
+                if total_steps % 500 == 0 and total_steps != 0 and use_wandb:
                     # Make a model summary
                     torch.save(
                         model.state_dict(),
@@ -101,7 +101,7 @@ def train(
                         config["summary_fn"](model_input, ground_truth, model_output, total_steps)
                     else:
                         config["summary_fn"](ground_truth, model_output, total_steps)
-                elif not total_steps % 500:
+                elif total_steps % 500 == 0 and total_steps != 0:
                     torch.save(
                         model.state_dict(),
                         './out/model_current.pth'
@@ -125,7 +125,7 @@ def train(
 
                 pbar.update(1)
 
-                if not total_steps % 500:
+                if total_steps % 500 == 0 and total_steps != 0:
                     tqdm.write("Epoch %d, Total loss %0.6f, iteration time %0.6f" % (epoch, train_loss, time.time() - start_time))
 
                 total_steps += 1
@@ -144,14 +144,5 @@ def train(
         else:
             torch.save(model.state_dict(), './out/model_final.pth')
             np.savetxt('./out/train_losses_final.txt', np.array(train_losses))
-
-        if use_wandb:
-            # On Windows and this doesn't work? Go to Settings -> Update & Security -> For developers
-            # and enable Developer Mode
-            torch.save(
-                model.state_dict(),
-                os.path.join(wandb.run.dir, 'model_final.pth')
-            )
-            wandb.save(os.path.join(wandb.run.dir, 'model_final.pth'))
 
         logger.info("Training complete")
