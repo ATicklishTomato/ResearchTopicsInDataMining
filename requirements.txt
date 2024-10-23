@@ -16,3 +16,4 @@ opencv-python==4.9.0.80
 cmapy==0.6.6
 wandb==0.18.3
 onnx==1.17.0
+plyfile==1.1

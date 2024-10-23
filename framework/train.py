@@ -69,12 +69,16 @@ def train(
                             model_output['model_out'], ground_truth['sdf']
                         )
 
-                        wandb.log(losses + {
+                        wandb_log = {
                             'total_steps': total_steps,
                             'iou': metrics.intersection_over_union(model_output, ground_truth),
                             'chamfer': chamfer,
                             'hausdorff': hausdorff
-                        })
+                        }
+
+                        wandb_log.update(losses)
+
+                        wandb.log(wandb_log)
 
 
                 train_loss = 0.

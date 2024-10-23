@@ -7,9 +7,9 @@ import torch
 import wandb
 from matplotlib import pyplot as plt
 from skimage import measure
-import open3d as o3d
+# import open3d as o3d
 
-from data.metrics import chamfer_hausdorff_distance, intersection_over_union
+# from data.metrics import chamfer_hausdorff_distance, intersection_over_union
 from data.utils import get_mgrid, lin2img
 
 logger = logging.getLogger(__name__)

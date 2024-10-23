@@ -49,7 +49,7 @@ class Sweeper:
             },
             'parameters': {
                 'epochs': {
-                    'values': [1000, 1500, 2000]
+                    'values': [10], #[1000, 1500, 2000]
                 },
                 'hidden_size': {
                     'values': [64, 128, 256, 512]
@@ -105,6 +105,9 @@ class Sweeper:
         return model
 
     def train(self, config=None):
+        prev_loss = -1
+        loss_margin = 0.01
+        patience = 0
         try:
             with wandb.init(config=config):
                 # Set up logging, checkpoints and summaries
@@ -141,16 +144,29 @@ class Sweeper:
                                            'epoch': epoch
                                            })
                             else:
-                                wandb.log(losses + {
+                                wandb_log = {
                                     'epoch': epoch,
                                     'total_loss': train_loss,
                                     'avg_loss': train_loss / len(losses),
-                                })
+                                }
+
+                                wandb_log.update(losses)
+
+                                wandb.log(wandb_log)
 
                             # Backpropagation
                             optimizer.zero_grad()
                             train_loss.backward()
                             optimizer.step()
+
+                            if prev_loss != -1 and prev_loss - train_loss < loss_margin:
+                                patience += 1
+                                if patience > 5:
+                                    logger.info("Early stopping")
+                                    return
+                            else:
+                                patience = 0
+                                prev_loss = train_loss
 
                             pbar.update(1)
 
