@@ -21,29 +21,58 @@ class ModelEnum(Enum):
     MFN = 'mfn'
     FFB = 'fourier'
     KAN = 'kan'
-    BASIC = 'basic'
-
-input_dimensions = {
-    'images': 2,
-}
-
-output_dimensions = {
-    'images': 1,
-}
 
 hidden_dimensions = {
-    'images': 16,
+    'siren': {
+        'images': 256,
+        'audio': 512,
+        'sdf': 256
+    },
+    'mfn': {
+        'images': 16,
+        'audio': 512,
+        'sdf': 16
+    },
+    'fourier': {
+        'images': 16,
+        'audio': 512,
+        'sdf': 16
+    },
+    'kan': {
+        'images': [16, 16],
+        'audio': [64,64],
+        'sdf': [16, 16]
+    }
 }
 
 hidden_layers = {
-    'images': [16,16]
+    'siren': {
+        'images': 3,
+        'audio': 4,
+        'sdf': 3
+    },
+    'mfn': {
+        'images': 3,
+        'audio': 3,
+        'sdf': 3
+    },
+    'fourier': {
+        'images': 3,
+        'audio': 3,
+        'sdf': 3
+    },
+    'kan': {
+        'images': len(hidden_dimensions['kan']['images']),
+        'audio': len(hidden_dimensions['kan']['audio']),
+        'sdf': len(hidden_dimensions['kan']['sdf'])
+    }
 }
 
 def parse_args():
     parser = ArgumentParser(description='Train and test a neural fields model on a chosen dataset with certain parameters')
     parser.add_argument('--data',
                         type=str,
-                        choices=['images'],
+                        choices=['images', 'audio', 'sdf'],
                         default='images',
                         help='Type of data to train and test on. Default is images')
     parser.add_argument('--data_point',
@@ -52,16 +81,16 @@ def parse_args():
                         help='Choose the index of the data_point to train on.')
     parser.add_argument('--data_fidelity',
                         type=str,
-                        choices=['low', 'medium', 'high'],\
+                        choices=['low', 'medium', 'high'],
                         default='low',
                         help='Choose the fidelity of the data point to train on.')
     parser.add_argument('--model',
                         type=str,
                         choices=[model.value for model in ModelEnum],
-                        default='basic',
+                        default='siren',
                         help='Type of model to use. Options are for SIREN, Multiplicative Filter Networks, ' +
                              'Fourier Filter Banks, Kolmogorov-Arnold Networks, and a basic coordinate-MLP, ' +
-                             'respectively. Default is basic')
+                             'respectively. Default is SIREN')
     parser.add_argument('--sweep',
                         action='store_true',
                         help='Run a hyperparameter sweep. Default is False. Note: This will override ' +
@@ -150,19 +179,41 @@ def validate_requirements():
 def get_configuration(args):
     match args.data:
         case "images":
-            from data.images.metrics import mean_squared_error
-            from data.images.summary import summary
+            from data.metrics import mean_squared_error
+            from data import image_summary
             from functools import partial
             resolution = (500, 500)
             return {
                 "datatype": "images",
                 "loss_fn": mean_squared_error, 
-                "summary_fn": partial(summary, resolution),
+                "summary_fn": partial(image_summary, resolution),
                 "resolution": resolution,
-                "in_features": input_dimensions[args.data],
-                "out_features": output_dimensions[args.data],
-                "hidden_dim": hidden_dimensions[args.data],
-                "hidden_layers": hidden_layers[args.data]
+                "in_features": 2,
+                "hidden_dim": hidden_dimensions[args.model][args.data],
+                "hidden_layers": hidden_layers[args.model][args.data]
+            }
+        case "audio":
+            from data.metrics import mean_squared_error
+            from data.audio.summary import audio_summary
+            return {
+                "datatype": "audio",
+                "loss_fn": mean_squared_error,
+                "summary_fn": audio_summary,
+                "in_features": 1,
+                "hidden_dim": hidden_dimensions[args.model][args.data],
+                "hidden_layers": hidden_layers[args.model][args.data]
+            }
+        case "sdf":
+            from data.metrics import sdf_loss
+            from data.sdf.summary import sdf_summary
+            return {
+                "datatype": "sdf",
+                "loss_fn": sdf_loss,
+                "summary_fn": sdf_summary,
+                "in_features": 3,
+                "out_features": 1,
+                "hidden_dim": hidden_dimensions[args.model][args.data],
+                "hidden_layers": hidden_layers[args.model][args.data]
             }
         case _:
             logger.error(f"Data {args.data} not recognized")
@@ -172,19 +223,27 @@ def get_model(args, dataloader, config):
     match args.model:
         case ModelEnum.MFN.value:
             from models.mfn import GaborNet
-            model = GaborNet(in_size=config["in_features"], hidden_size=config["hidden_dim"], out_size=dataloader.dataset.dataset.img_channels, n_layers=3, input_scale=256, weight_scale=1)
+            model = GaborNet(in_size=config["in_features"],
+                             hidden_size=config["hidden_dim"],
+                             out_size=dataloader.dataset.dataset.output_dimensionality,
+                             n_layers=config["hidden_layers"],
+                             input_scale=256,
+                             weight_scale=1
+                             )
         case ModelEnum.FFB.value:
             from models.NFFB.img.NFFB_2d import NFFB
-            model = NFFB(config["in_features"], dataloader.dataset.dataset.img_channels)
+            model = NFFB(config["in_features"], dataloader.dataset.dataset.output_dimensionality)
         case ModelEnum.KAN.value:
             from models.kan import KAN
-            model = KAN(layers_hidden=[config["in_features"], *config["hidden_layers"], dataloader.dataset.dataset.img_channels])
-        case ModelEnum.BASIC.value:
-            from models.basic.basic import Basic
-            model = Basic(input_dimensions[args.data], output_dimensions[args.data])
+            model = KAN(layers_hidden=[config["in_features"],
+                                       *config["hidden_dim"],
+                                       dataloader.dataset.dataset.output_dimensionality])
         case ModelEnum.SIREN.value:
             from models.siren import SIREN
-            model = SIREN(in_features=config["in_features"], out_features=dataloader.dataset.dataset.img_channels, hidden_features=config["hidden_dim"])
+            model = SIREN(in_features=config["in_features"],
+                          out_features=dataloader.dataset.dataset.output_dimensionality,
+                          hidden_features=config["hidden_dim"],
+                          num_hidden_layers=config["hidden_layers"])
         case _:
             logger.error(f"Model {args.model} not recognized")
             raise ValueError(f"Model {args.model} not recognized")
@@ -247,7 +306,7 @@ def main():
         else:
             logger.error("Something went wrong logging in to Weights and Biases")
             exit(1)
-        Sweeper(args.model, dataloader, config, args.device, args.verbose)
+        Sweeper(args.model, dataloader, config, args.device, args.verbose, args.sweep_runs)
         exit(0)
 
     use_wandb = True
@@ -262,7 +321,7 @@ def main():
         use_wandb = False
 
     if use_wandb:
-        wandb.init(project=args.model, config=wandb_config)
+        wandb.init(project=args.model + "_" + args.data, config=wandb_config)
         logger.info("Weights and Biases initialized")
     elif not os.path.exists('out'):
         os.makedirs('out')

@@ -1,9 +1,14 @@
 import logging
+import os
+
 import torch
 import wandb
 from matplotlib import pyplot as plt
+from scipy.io import wavfile
 
-from data.images import utils, metrics
+from data import utils, metrics
+from data.audio.summary import audio_summary
+from data.sdf.summary import sdf_summary
 
 logger = logging.getLogger(__name__)
 
@@ -28,12 +33,16 @@ def test(model,
             losses = config["loss_fn"](model_output, ground_truth)
 
             if use_wandb:
-                wandb.log({'total_loss': sum(losses.values()),
-                           "avg_loss": config["loss_fn"](model_output, ground_truth)['img_loss'],
-                           'psnr': metrics.peak_signal_to_noise_ratio(model_output, ground_truth)
-                           })
+                if config["datatype"] != "sdf":
+                    wandb.log({'total_loss': sum(losses.values()),
+                               "avg_loss": config["loss_fn"](model_output, ground_truth)['loss'].mean(),
+                               'psnr': metrics.peak_signal_to_noise_ratio(model_output, ground_truth)
+                               })
+                else:
+                    logger.info("SDF metrics are done in the summary function")
 
-            if config["resolution"] is not None:
+            if 'img' in ground_truth.keys():
+                logger.info("Plotting test image comparison")
                 # Get the numpy arrays for the images
                 ground_truth = utils.lin2img(ground_truth['img'], config["resolution"])
                 predicted = utils.lin2img(model_output['model_out'], config["resolution"])
@@ -55,6 +64,32 @@ def test(model,
                     wandb.log({
                         "test_image": wandb.Image(fig)
                     })
+                else:
+                    plt.savefig('./out/test_image.png')
                 plt.close(fig)
+            elif 'func' in ground_truth.keys():
+                logger.info("Plotting test audio comparison")
+                # Plot the audio
+                plt.figure(figsize=(12, 6))
+                plt.plot(ground_truth['func'].squeeze(0).detach().cpu().numpy(), label='Ground Truth')
+                plt.plot(model_output['model_out'].squeeze(0).detach().cpu().numpy(), label='Predicted Audio')
+                plt.legend()
+                plt.title('Ground Truth vs Predicted Audio')
+                plt.xlabel('Time')
+                plt.ylabel('Amplitude')
+
+                if use_wandb:
+                    wandb.log({
+                        "test_audio": wandb.Image(plt)
+                    })
+                else:
+                    plt.savefig('./out/test_audio.png')
+                plt.close()
+
+                audio_summary(model_input, ground_truth, model_output, None, prefix='test_')
+            elif 'sdf' in ground_truth.keys():
+                logger.info("Plotting test SDF comparison")
+
+                sdf_summary(model, model_input, None, test=True)
 
     logger.info("Testing complete")

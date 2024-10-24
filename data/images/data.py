@@ -7,7 +7,7 @@ class Camera(Dataset):
         super().__init__()
         self.downsample_factor = downsample_factor
         self.img = Image.fromarray(skimage.data.camera())
-        self.img_channels = 1
+        self.output_dimensionality = 1
 
         if downsample_factor > 1:
             size = (int(512 / downsample_factor),) * 2

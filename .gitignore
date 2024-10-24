@@ -169,6 +169,7 @@ logs/*
 data/*.png
 data/images/reconstruction/files/*
 !data/.gitkeep
+data/sdf/files/*
 
 wandb.login
 wandb/

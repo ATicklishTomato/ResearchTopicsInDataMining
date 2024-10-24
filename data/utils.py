@@ -1,4 +1,4 @@
-
+import logging
 import torch
 import numpy as np
 import scipy.ndimage
@@ -7,6 +7,8 @@ import math
 import matplotlib.colors as colors
 from torch.utils.data import Dataset
 from torchvision.transforms import Resize, Compose, ToTensor, Normalize
+
+logger = logging.getLogger(__name__)
 
 
 def get_mgrid(sidelen, dim=2):
@@ -72,7 +74,7 @@ class Implicit2DWrapper(Dataset):
             grady = scipy.ndimage.sobel(img.numpy(), axis=2).sum(axis=0)  # Sum over channels
             laplace = scipy.ndimage.laplace(img.numpy()).sum(axis=0)
 
-        img = img.permute(1, 2, 0).view(-1, self.dataset.img_channels)
+        img = img.permute(1, 2, 0).view(-1, self.dataset.output_dimensionality)
         in_dict = {'idx': idx, 'coords': self.mgrid}
         gt_dict = {'img': img}
 
@@ -108,7 +110,7 @@ class Implicit2DWrapper(Dataset):
     def get_item_small(self, idx):
         img = self.transform(self.dataset[idx])
         spatial_img = img.clone()
-        img = img.permute(1, 2, 0).view(-1, self.dataset.img_channels)
+        img = img.permute(1, 2, 0).view(-1, self.dataset.output_dimensionality)
 
         gt_dict = {'img': img}
 
@@ -203,3 +205,86 @@ def rescale_img(x, mode='scale', perc=None, tmax=1.0, tmin=0.0):
 
 def to_uint8(x):
     return (255. * x).astype(np.uint8)
+
+class ImplicitAudioWrapper(Dataset):
+    def __init__(self, dataset):
+        self.dataset = dataset
+        self.grid = np.linspace(start=-100, stop=100, num=dataset.file_length)
+        self.grid = self.grid.astype(np.float32)
+        self.grid = torch.Tensor(self.grid).view(-1, 1)
+
+    def get_num_samples(self):
+        return self.grid.shape[0]
+
+    def __len__(self):
+        return 1
+
+    def __getitem__(self, idx):
+        rate, data = self.dataset[idx]
+        scale = np.max(np.abs(data))
+        data = (data / scale)
+        data = torch.Tensor(data).view(-1, 1)
+        return {'idx': idx, 'coords': self.grid}, {'func': data, 'rate': rate, 'scale': scale}
+
+
+class SugarHelper:
+    def __init__(self):
+        self.output_dimensionality = 1
+
+class PointCloud(Dataset):
+    def __init__(self, pointcloud_path, on_surface_points, keep_aspect_ratio=True):
+        super().__init__()
+
+        logger.info("Loading point cloud")
+        point_cloud = np.genfromtxt(pointcloud_path)
+        logger.info("Finished loading point cloud")
+
+        coords = point_cloud[:, :3]
+        self.normals = point_cloud[:, 3:]
+
+        self.dataset = SugarHelper()
+
+        # Reshape point cloud such that it lies in bounding box of (-1, 1) (distorts geometry, but makes for high
+        # sample efficiency)
+        coords -= np.mean(coords, axis=0, keepdims=True)
+        if keep_aspect_ratio:
+            coord_max = np.amax(coords)
+            coord_min = np.amin(coords)
+        else:
+            coord_max = np.amax(coords, axis=0, keepdims=True)
+            coord_min = np.amin(coords, axis=0, keepdims=True)
+
+        self.coords = (coords - coord_min) / (coord_max - coord_min)
+        self.coords -= 0.5
+        self.coords *= 2.
+
+        self.on_surface_points = on_surface_points
+
+    def __len__(self):
+        return self.coords.shape[0] // self.on_surface_points
+
+    def __getitem__(self, idx):
+        point_cloud_size = self.coords.shape[0]
+
+        off_surface_samples = self.on_surface_points  # **2
+        total_samples = self.on_surface_points + off_surface_samples
+
+        # Random coords
+        rand_idcs = np.random.choice(point_cloud_size, size=self.on_surface_points)
+
+        on_surface_coords = self.coords[rand_idcs, :]
+        on_surface_normals = self.normals[rand_idcs, :]
+
+        off_surface_coords = np.random.uniform(-1, 1, size=(off_surface_samples, 3))
+        off_surface_normals = np.ones((off_surface_samples, 3)) * -1
+
+        sdf = np.zeros((total_samples, 1))  # on-surface = 0
+        sdf[self.on_surface_points:, :] = -1  # off-surface = -1
+
+        coords = np.concatenate((on_surface_coords, off_surface_coords), axis=0)
+        normals = np.concatenate((on_surface_normals, off_surface_normals), axis=0)
+
+        logger.debug(f"Coords: {coords.shape}, Normals: {normals.shape}, SDF: {sdf.shape}")
+
+        return {'coords': torch.from_numpy(coords).float()}, {'sdf': torch.from_numpy(sdf).float(),
+                                                              'normals': torch.from_numpy(normals).float()}

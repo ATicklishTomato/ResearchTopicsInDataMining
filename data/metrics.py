@@ -1,15 +1,56 @@
+import logging
+import os
+
 import numpy as np
 import skimage.measure
+import torch
+import torch.nn.functional as F
 from torchmetrics import JaccardIndex
 from torcheval.metrics import PeakSignalNoiseRatio
 from scipy.spatial import cKDTree as KDTree
 
+logger = logging.getLogger(__name__)
 
 def mean_squared_error(model_output, gt):
-    return {'img_loss': ((model_output['model_out'] - gt['img']) ** 2).mean()}
+    if 'img' in gt.keys():
+        return {'loss': ((model_output['model_out'] - gt['img']) ** 2).mean()}
+    elif 'func' in gt.keys():
+        return {'loss': ((model_output['model_out'] - gt['func']) ** 2).mean()}
 
 structural_similarity = skimage.metrics.structural_similarity
 peak_signal_noise_ratio = skimage.metrics.peak_signal_noise_ratio
+
+def gradient(y, x, grad_outputs=None):
+    if grad_outputs is None:
+        grad_outputs = torch.ones_like(y)
+    grad = torch.autograd.grad(y, [x], grad_outputs=grad_outputs, create_graph=True)[0]
+    return grad
+
+def sdf_loss(model_output, gt):
+    '''
+       x: batch of input coordinates
+       y: usually the output of the trial_soln function
+       '''
+    gt_sdf = gt['sdf']
+    gt_normals = gt['normals']
+
+    coords = model_output['model_in']
+    pred_sdf = model_output['model_out']
+
+    gradient_res = gradient(pred_sdf, coords)
+
+    # Wherever boundary_values is not equal to zero, we interpret it as a boundary constraint.
+    sdf_constraint = torch.where(gt_sdf != -1, pred_sdf, torch.zeros_like(pred_sdf))
+    inter_constraint = torch.where(gt_sdf != -1, torch.zeros_like(pred_sdf), torch.exp(-1e2 * torch.abs(pred_sdf)))
+    normal_constraint = torch.where(gt_sdf != -1, 1 - F.cosine_similarity(gradient_res, gt_normals, dim=-1)[..., None],
+                                    torch.zeros_like(gradient_res[..., :1]))
+    grad_constraint = torch.abs(gradient_res.norm(dim=-1) - 1)
+    # Exp      # Lapl
+    # -----------------
+    return {'sdf': torch.abs(sdf_constraint).mean() * 3e3,  # 1e4      # 3e3
+            'inter': inter_constraint.mean() * 1e2,  # 1e2                   # 1e3
+            'normal_constraint': normal_constraint.mean() * 1e2,  # 1e2
+            'grad_constraint': grad_constraint.mean() * 5e1}  # 1e1      # 5e1
 
 def peak_signal_to_noise_ratio(model_output, gt):
     """Simple wrapper around skimage.metrics.peak_signal_noise_ratio.
@@ -21,7 +62,10 @@ def peak_signal_to_noise_ratio(model_output, gt):
         psnr (float): The Peak Signal to Noise Ratio.
     """
     psnr = PeakSignalNoiseRatio()
-    psnr.update(model_output['model_out'], gt['img'])
+    if 'img' in gt.keys():
+        psnr.update(model_output['model_out'], gt['img'])
+    elif 'func' in gt.keys():
+        psnr.update(model_output['model_out'], gt['func'])
     return psnr.compute().detach().cpu().item()
 
 def intersection_over_union(model_output, gt, n_classes=2):
@@ -35,11 +79,13 @@ def intersection_over_union(model_output, gt, n_classes=2):
     Returns:
         iou (float): The Intersection over Union.
     """
+    logger.debug(f"ground truth type: {type(gt)}, shape: {gt.shape}")
+    logger.debug(f"model output type: {type(model_output)}, shape: {model_output.shape}")
     jaccard = JaccardIndex(num_classes=n_classes, task='multiclass')
-    return jaccard(model_output['model_out'], gt['img']).detach().cpu().item()
+    return jaccard(model_output, gt).detach().cpu().item()
 
 
-def chamfer_and_hausdorff_distance(recon_points, gt_points, eval_type="Default"):
+def chamfer_hausdorff_distance(recon_points, gt_points, eval_type="Default"):
     """Borrowed from the StEik paper repository.
     Can be found here: https://github.com/sunyx523/StEik
     This function can be found in /surface_reconstruction/compute_metrics_shapenet.py
