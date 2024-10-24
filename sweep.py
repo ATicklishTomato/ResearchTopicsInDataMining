@@ -30,12 +30,13 @@ def get_optimizer(model, wandb_config):
 
 class Sweeper:
 
-    def __init__(self, model_name, dataloader, config, device, log_level, sweep_runs = 25):
+    def __init__(self, model_name, dataloader, config, device, log_level, sweep_runs = 25, enable_patience = False):
         self.model_name = model_name
         self.dataloader = dataloader
         self.config = config
         self.device = device
         self.log_level = log_level
+        self.enable_patience = enable_patience
 
         logger.setLevel(log_level)
 
@@ -49,7 +50,7 @@ class Sweeper:
             },
             'parameters': {
                 'epochs': {
-                    'values': [10], #[1000, 1500, 2000]
+                    'values': [1000, 1500, 2000]
                 },
                 'hidden_size': {
                     'values': [64, 128, 256, 512]
@@ -159,14 +160,15 @@ class Sweeper:
                             train_loss.backward()
                             optimizer.step()
 
-                            if prev_loss != -1 and prev_loss - train_loss < loss_margin:
-                                patience += 1
-                                if patience > 5:
-                                    logger.info("Early stopping")
-                                    return
-                            else:
-                                patience = 0
-                                prev_loss = train_loss
+                            if self.enable_patience:
+                                if prev_loss != -1 and prev_loss - train_loss < loss_margin:
+                                    patience += 1
+                                    if patience > 5:
+                                        logger.info("Early stopping")
+                                        return
+                                else:
+                                    patience = 0
+                                    prev_loss = train_loss
 
                             pbar.update(1)
 
