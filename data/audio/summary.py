@@ -7,7 +7,7 @@ import wandb
 def min_max_summary(name, tensor, total_steps):
     if wandb.run is not None:
         wandb.log({name + '_min': tensor.min().detach().cpu().numpy(),
-                   name + '_max': tensor.max().detach().cpu().numpy()}, step=total_steps)
+                   name + '_max': tensor.max().detach().cpu().numpy()})
 
 def audio_summary(
     model_input,
@@ -40,7 +40,7 @@ def audio_summary(
     axes[2].axes.get_xaxis().set_visible(False)
 
     if wandb.run is not None:
-        wandb.log({prefix + 'gt_vs_pred': wandb.Image(fig)}, step=total_steps)
+        wandb.log({prefix + 'gt_vs_pred': wandb.Image(fig)})
     else:
         plt.savefig(f"./out/{prefix}gt_vs_pred.png")
 
@@ -53,8 +53,7 @@ def audio_summary(
         wavfile.write(os.path.join(wandb.run.dir, 'gt.wav'), gt_rate, gt_func.detach().cpu().numpy())
         wavfile.write(os.path.join(wandb.run.dir, 'pred.wav'), gt_rate, pred_func.detach().cpu().numpy())
         wandb.log({prefix + 'gt_audio': wandb.Audio(os.path.join(wandb.run.dir, 'gt.wav'), caption='Ground Truth'),
-                     prefix + 'pred_audio': wandb.Audio(os.path.join(wandb.run.dir, 'pred.wav'), caption='Prediction')},
-                  step=total_steps)
+                     prefix + 'pred_audio': wandb.Audio(os.path.join(wandb.run.dir, 'pred.wav'), caption='Prediction')})
     else:
         wavfile.write(f"./out/{prefix}gt.wav", gt_rate, gt_func.detach().cpu().numpy())
         wavfile.write(f"./out/{prefix}pred.wav", gt_rate, pred_func.detach().cpu().numpy())
