@@ -25,22 +25,22 @@ class ModelEnum(Enum):
 hidden_dimensions = {
     'siren': {
         'images': 256,
-        'audio': 256,
+        'audio': 512,
         'sdf': 256
     },
     'mfn': {
         'images': 16,
-        'audio': 16,
+        'audio': 512,
         'sdf': 16
     },
     'fourier': {
         'images': 16,
-        'audio': 16,
+        'audio': 512,
         'sdf': 16
     },
     'kan': {
         'images': [16, 16],
-        'audio': [16, 16],
+        'audio': [64,64],
         'sdf': [16, 16]
     }
 }
@@ -48,7 +48,7 @@ hidden_dimensions = {
 hidden_layers = {
     'siren': {
         'images': 3,
-        'audio': 3,
+        'audio': 4,
         'sdf': 3
     },
     'mfn': {
@@ -321,7 +321,7 @@ def main():
         use_wandb = False
 
     if use_wandb:
-        wandb.init(project=args.model, config=wandb_config)
+        wandb.init(project=args.model + "_" + args.data, config=wandb_config)
         logger.info("Weights and Biases initialized")
     elif not os.path.exists('out'):
         os.makedirs('out')
