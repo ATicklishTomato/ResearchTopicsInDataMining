@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 import math
 import logging
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -242,6 +243,106 @@ class KANLinear(torch.nn.Module):
             + regularize_entropy * regularization_loss_entropy
         )
 
+class NaiveFourierKANLayer(torch.nn.Module):
+    def __init__(
+        self,
+        in_features,
+        out_features,
+        grid_size=5,
+        spline_order=3,
+        scale_noise=0.1,
+        scale_base=1.0,
+        scale_spline=1.0,
+        enable_standalone_scale_spline=True,
+        base_activation=torch.nn.SiLU,
+        grid_eps=0.02,
+        grid_range=[-1, 1],
+        addbias=True,
+        smooth_initialization=False
+    ):
+        super(NaiveFourierKANLayer, self).__init__()
+        
+        self.in_features = in_features
+        self.out_features = out_features
+        self.grid_size = grid_size
+        self.spline_order = spline_order
+        self.scale_noise = scale_noise
+        self.scale_base = scale_base
+        self.scale_spline = scale_spline
+        self.enable_standalone_scale_spline = enable_standalone_scale_spline
+        self.base_activation = base_activation()
+        self.grid_eps = grid_eps
+        self.addbias = addbias
+
+        h = (grid_range[1] - grid_range[0]) / grid_size
+        grid = (
+            (torch.arange(-spline_order, grid_size + spline_order + 1) * h + grid_range[0])
+            .expand(in_features, -1)
+            .contiguous()
+        )
+        self.register_buffer("grid", grid)
+
+        # Initialize Fourier coefficients for sine and cosine parts
+        grid_norm_factor = (torch.arange(grid_size) + 1) ** 2 if smooth_initialization else np.sqrt(grid_size)
+        self.fouriercoeffs = torch.nn.Parameter(
+            torch.randn(2, out_features, in_features, grid_size) / (np.sqrt(in_features) * grid_norm_factor)
+        )
+        logger.info(f"NaiveFourierKANLayer initialized with {in_features} -> {out_features}")
+        if self.addbias:
+            self.bias = torch.nn.Parameter(torch.zeros(1, out_features))
+
+        if enable_standalone_scale_spline:
+            self.spline_scaler = torch.nn.Parameter(torch.Tensor(out_features, in_features))
+            logger.info(f"NaiveFourierKANLayer initialized with standalone spline scaler")
+
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        torch.nn.init.kaiming_uniform_(self.fouriercoeffs, a=math.sqrt(5) * self.scale_spline)
+        if self.enable_standalone_scale_spline:
+            torch.nn.init.kaiming_uniform_(self.spline_scaler, a=math.sqrt(5) * self.scale_spline)
+        if self.addbias:
+            torch.nn.init.zeros_(self.bias)
+
+    def scaled_spline_weight(self):
+        return self.fouriercoeffs * (
+            self.spline_scaler.unsqueeze(-1)
+            if self.enable_standalone_scale_spline
+            else 1.0
+        )
+
+    def forward(self, x: torch.Tensor):
+        
+        assert x.size(-1) == self.in_features
+        original_shape = x.shape
+        x = x.reshape(-1, self.in_features)
+        k = torch.reshape(torch.arange(1, self.grid_size + 1, device=x.device), (1, 1, 1, self.grid_size))
+        xrshp = torch.reshape(x, (-1, 1, self.in_features, 1))  # Reshape for broadcasting
+        c = torch.cos(k * xrshp)
+        s = torch.sin(k * xrshp)
+
+        c = torch.reshape(c, (1, x.shape[0], x.shape[1], self.grid_size))
+        s = torch.reshape(s, (1, x.shape[0], x.shape[1], self.grid_size))
+
+        # Apply einsum to compute the Fourier coefficients
+        y2 = torch.einsum("dbik,djik->bj", torch.cat([c, s], axis=0), self.fouriercoeffs)
+        if self.addbias:
+            y2 += self.bias
+        
+        y = y2.reshape(*original_shape[:-1], self.out_features)
+        logger.debug(f"NaiveFourierKANLayer output shape: {y.shape}")
+        return y
+
+    def regularization_loss(self, regularize_activation=1.0, regularize_entropy=1.0):
+        l1_fake = self.fouriercoeffs.abs().mean(-1)
+        regularization_loss_activation = l1_fake.sum()
+        p = l1_fake / regularization_loss_activation
+        regularization_loss_entropy = -torch.sum(p * p.log())
+        return (
+            regularize_activation * regularization_loss_activation
+            + regularize_entropy * regularization_loss_entropy
+        )
+
 
 class KAN(torch.nn.Module):
     def __init__(
@@ -255,27 +356,47 @@ class KAN(torch.nn.Module):
         base_activation=torch.nn.SiLU,
         grid_eps=0.02,
         grid_range=[-1, 1],
+        selection = 'linear'
     ):
         super(KAN, self).__init__()
         self.grid_size = grid_size
         self.spline_order = spline_order
 
         self.layers = torch.nn.ModuleList()
-        for in_features, out_features in zip(layers_hidden, layers_hidden[1:]):
-            self.layers.append(
-                KANLinear(
-                    in_features,
-                    out_features,
-                    grid_size=grid_size,
-                    spline_order=spline_order,
-                    scale_noise=scale_noise,
-                    scale_base=scale_base,
-                    scale_spline=scale_spline,
-                    base_activation=base_activation,
-                    grid_eps=grid_eps,
-                    grid_range=grid_range,
+        if selection == 'linear':
+            logger.info("Initializing KAN model with linear layers")
+            for in_features, out_features in zip(layers_hidden, layers_hidden[1:]):
+                self.layers.append(
+                    KANLinear(
+                        in_features,
+                        out_features,
+                        grid_size=grid_size,
+                        spline_order=spline_order,
+                        scale_noise=scale_noise,
+                        scale_base=scale_base,
+                        scale_spline=scale_spline,
+                        base_activation=base_activation,
+                        grid_eps=grid_eps,
+                        grid_range=grid_range,
+                    )
                 )
-            )
+        elif selection == 'fourier':
+            logger.info("Initializing KAN model with Fourier layers")
+            for in_features, out_features in zip(layers_hidden, layers_hidden[1:]):
+                self.layers.append(
+                    NaiveFourierKANLayer(
+                        in_features,
+                        out_features,
+                        grid_size=grid_size,
+                        spline_order=spline_order,
+                        scale_noise=scale_noise,
+                        scale_base=scale_base,
+                        scale_spline=scale_spline,
+                        base_activation=base_activation,
+                        grid_eps=grid_eps,
+                        grid_range=grid_range,
+                    )
+                )
         self.net = torch.nn.Sequential(*self.layers)
         logger.info("KAN model initialized")
 
@@ -284,11 +405,6 @@ class KAN(torch.nn.Module):
             coords = x["coords"].clone().detach().requires_grad_(True)
 
         logger.debug(f"Kan model input shape: {coords.shape}")
-            
-        # for layer in self.layers:
-        #     if update_grid:
-        #         layer.update_grid(coords)
-        #     out = layer(coords)
         out = self.net(coords)
         logger.debug(f"Kan model output shape: {out.shape}")
         return {'model_in': coords, 'model_out': out}
