@@ -3,11 +3,7 @@ import torch
 import scipy.io.wavfile as wavfile
 import os
 import wandb
-
-def min_max_summary(name, tensor, total_steps):
-    if wandb.run is not None:
-        wandb.log({name + '_min': tensor.min().detach().cpu().numpy(),
-                   name + '_max': tensor.max().detach().cpu().numpy()}, step=total_steps)
+from data.utils import min_max_summary
 
 def audio_summary(
     model_input,

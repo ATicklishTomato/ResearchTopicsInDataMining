@@ -5,6 +5,7 @@ import numpy as np
 import os
 import logging
 import wandb
+from torch.utils.tensorboard import SummaryWriter
 
 from data import metrics
 
@@ -18,7 +19,7 @@ def train(
     config: dict,
     device,
     log_level,
-    use_wandb=False
+    use_wandb=False,
 ):
     # Set up logging, checkpoints and summaries
     logger.setLevel(log_level)
@@ -30,6 +31,8 @@ def train(
     if use_wandb:
         wandb.watch(model, log='all', log_freq=250)
         logger.info("Model watched by Weights and Biases")
+
+    writer = SummaryWriter(os.path.join('logs', 'summaries'))
 
     total_steps = 0
     with tqdm(total=len(dataloader) * epochs) as pbar:
@@ -99,8 +102,8 @@ def train(
                         os.path.join(wandb.run.dir, 'model_current.pth')
                     )
                     wandb.save(os.path.join(wandb.run.dir, 'model_current.pth'))
-                    if config["datatype"] == "sdf":
-                        config["summary_fn"](model, model_input, total_steps)
+                    if config["datatype"] == "shapes":
+                        config["summary_fn"](model, model_input, model_output, total_steps, writer)
                     elif config["datatype"] == "audio":
                         config["summary_fn"](model_input, ground_truth, model_output, total_steps)
                     else:
@@ -110,8 +113,8 @@ def train(
                         model.state_dict(),
                         './out/model_current.pth'
                     )
-                    if config["datatype"] == "sdf":
-                        config["summary_fn"](model, model_input, total_steps)
+                    if config["datatype"] == "shapes":
+                        config["summary_fn"](model, model_input, model_output, total_steps, writer)
                     elif config["datatype"] == "audio":
                         config["summary_fn"](model_input, ground_truth, model_output, total_steps)
                     else:
@@ -122,9 +125,15 @@ def train(
                     pbar.close()
                     return
 
-                # Backpropagation
+                # Prepare the gradients
                 optimizer.zero_grad()
                 train_loss.backward()
+
+                # Clip the gradients if the model requests it
+                if getattr(model, "clip_gradients", False):
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.)
+
+                # Backpropagate
                 optimizer.step()
 
                 pbar.update(1)
