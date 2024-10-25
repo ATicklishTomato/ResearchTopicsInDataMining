@@ -21,6 +21,7 @@ class ModelEnum(Enum):
     MFN = 'mfn'
     FFB = 'fourier'
     KAN = 'kan'
+    FKAN = 'fkan'
 
 hidden_dimensions = {
     'siren': {
@@ -238,6 +239,12 @@ def get_model(args, dataloader, config):
             model = KAN(layers_hidden=[config["in_features"],
                                        *config["hidden_dim"],
                                        dataloader.dataset.dataset.output_dimensionality])
+        case ModelEnum.FKAN.value:
+            from models.kan import KAN
+            model = KAN(layers_hidden=[config["in_features"],
+                                        *config["hidden_dim"],
+                                        dataloader.dataset.dataset.output_dimensionality],
+                            selection='fourier')
         case ModelEnum.SIREN.value:
             from models.siren import SIREN
             model = SIREN(in_features=config["in_features"],
