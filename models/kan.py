@@ -321,27 +321,6 @@ class NaiveFourierKANLayer(torch.nn.Module):
         c = torch.cos(k * xrshp)
         s = torch.sin(k * xrshp)
 
-        # Compute the interpolation of the Fourier coefficients
-        # y_cos = torch.sum(c * self.fouriercoeffs[0:1], dim=(-2, -1))
-        # y_sin = torch.sum(s * self.fouriercoeffs[1:2], dim=(-2, -1))
-        # y = y_cos + y_sin
-        # logger.debug(f"NaiveFourierKANLayer output shape before reshape: {y.shape}")
-        
-        # if self.addbias:
-        #     y += self.bias
-        '''
-        #You can use einsum instead to reduce memory usage
-        #It stills not as good as fully fused but it should help
-        #einsum is usually slower though
-        c = th.reshape(c,(1,x.shape[0],x.shape[1],self.gridsize))
-        s = th.reshape(s,(1,x.shape[0],x.shape[1],self.gridsize))
-        y2 = th.einsum( "dbik,djik->bj", th.concat([c,s],axis=0) ,self.fouriercoeffs )
-        if( self.addbias):
-            y2 += self.bias
-        diff = th.sum((y2-y)**2)
-        print("diff")
-        print(diff) #should be ~0
-        '''
         c = torch.reshape(c, (1, x.shape[0], x.shape[1], self.grid_size))
         s = torch.reshape(s, (1, x.shape[0], x.shape[1], self.grid_size))
 

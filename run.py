@@ -43,7 +43,13 @@ hidden_dimensions = {
         'images': [16, 16],
         'audio': [64,64],
         'sdf': [16, 16]
+    },
+    'fkan': {
+        'images': [16],
+        'audio': [64,64],
+        'sdf': [16, 16]
     }
+
 }
 
 hidden_layers = {
@@ -66,6 +72,33 @@ hidden_layers = {
         'images': len(hidden_dimensions['kan']['images']),
         'audio': len(hidden_dimensions['kan']['audio']),
         'sdf': len(hidden_dimensions['kan']['sdf'])
+    },
+    'fkan': {
+        'images': len(hidden_dimensions['fkan']['images']),
+        'audio': len(hidden_dimensions['fkan']['audio']),
+        'sdf': len(hidden_dimensions['fkan']['sdf'])
+    }
+}
+
+grid_size = {
+    'kan': {
+        'images': 5,
+        'audio': 5
+    },
+    'fkan': {
+        'images': 5,
+        'audio': 5
+    }
+}
+
+spline_order = {
+    'kan': {
+        'images': 2,
+        'audio': 3
+    },
+    'fkan': {
+        'images': 2,
+        'audio': 3
     }
 }
 
@@ -191,7 +224,9 @@ def get_configuration(args):
                 "resolution": resolution,
                 "in_features": 2,
                 "hidden_dim": hidden_dimensions[args.model][args.data],
-                "hidden_layers": hidden_layers[args.model][args.data]
+                "hidden_layers": hidden_layers[args.model][args.data],
+                "grid_size": grid_size[args.model][args.data],
+                "spline_order": spline_order[args.model][args.data]
             }
         case "audio":
             from data.metrics import mean_squared_error
@@ -202,7 +237,9 @@ def get_configuration(args):
                 "summary_fn": audio_summary,
                 "in_features": 1,
                 "hidden_dim": hidden_dimensions[args.model][args.data],
-                "hidden_layers": hidden_layers[args.model][args.data]
+                "hidden_layers": hidden_layers[args.model][args.data],
+                "grid_size": grid_size[args.model][args.data],
+                "spline_order": spline_order[args.model][args.data]
             }
         case "sdf":
             from data.metrics import sdf_loss
@@ -238,13 +275,17 @@ def get_model(args, dataloader, config):
             from models.kan import KAN
             model = KAN(layers_hidden=[config["in_features"],
                                        *config["hidden_dim"],
-                                       dataloader.dataset.dataset.output_dimensionality])
+                                       dataloader.dataset.dataset.output_dimensionality],
+                                       grid_size=config["grid_size"],
+                                       spline_order=config["spline_order"])
         case ModelEnum.FKAN.value:
             from models.kan import KAN
             model = KAN(layers_hidden=[config["in_features"],
                                         *config["hidden_dim"],
                                         dataloader.dataset.dataset.output_dimensionality],
-                            selection='fourier')
+                                        grid_size=config["grid_size"],
+                                        spline_order=config["spline_order"],
+                                        selection='fourier')
         case ModelEnum.SIREN.value:
             from models.siren import SIREN
             model = SIREN(in_features=config["in_features"],
