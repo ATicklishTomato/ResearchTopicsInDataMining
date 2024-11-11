@@ -27,13 +27,12 @@ hidden_dimensions = {
     'siren': {
         'images': 256,
         'audio': 512,
-        'audio': 512,
         'shapes': 256
     },
     'mfn': {
         'images': 16,
-        'audio': 512,
         'shapes': 16
+        'audio': 512,
     },
     'fourier': {
         'images': 16,
