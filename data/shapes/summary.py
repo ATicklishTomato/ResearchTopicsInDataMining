@@ -2,6 +2,7 @@ from data.utils import get_mgrid, lin2img, min_max_summary
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
+import wandb
 
 def make_contour_plot(array_2d,mode='log'):
     fig, ax = plt.subplots(figsize=(2.75, 2.75), dpi=300)
@@ -26,7 +27,7 @@ def make_contour_plot(array_2d,mode='log'):
     ax.axis('off')
     return fig
 
-def shape_summary(model, model_input, model_output, total_steps, writer, prefix='train_'):
+def shape_summary(model, model_input, model_output, total_steps, prefix='train_'):
     slice_coords_2d = get_mgrid(512)
 
     with torch.no_grad():
@@ -37,7 +38,8 @@ def shape_summary(model, model_input, model_output, total_steps, writer, prefix=
         sdf_values = yz_model_out['model_out']
         sdf_values = lin2img(sdf_values).squeeze().cpu().numpy()
         fig = make_contour_plot(sdf_values)
-        writer.add_figure(prefix + 'yz_sdf_slice', fig, global_step=total_steps)
+        if wandb.run is not None:
+            wandb.log({prefix + 'yz_sdf_slice': wandb.Image(fig)})
 
         xz_slice_coords = torch.cat((slice_coords_2d[:,:1],
                                      torch.zeros_like(slice_coords_2d[:, :1]),
@@ -48,7 +50,8 @@ def shape_summary(model, model_input, model_output, total_steps, writer, prefix=
         sdf_values = xz_model_out['model_out']
         sdf_values = lin2img(sdf_values).squeeze().cpu().numpy()
         fig = make_contour_plot(sdf_values)
-        writer.add_figure(prefix + 'xz_sdf_slice', fig, global_step=total_steps)
+        if wandb.run is not None:
+            wandb.log({prefix + 'xz_sdf_slice': wandb.Image(fig)})
 
         xy_slice_coords = torch.cat((slice_coords_2d[:,:2],
                                      -0.75*torch.ones_like(slice_coords_2d[:, :1])), dim=-1)
@@ -58,7 +61,8 @@ def shape_summary(model, model_input, model_output, total_steps, writer, prefix=
         sdf_values = xy_model_out['model_out']
         sdf_values = lin2img(sdf_values).squeeze().cpu().numpy()
         fig = make_contour_plot(sdf_values)
-        writer.add_figure(prefix + 'xy_sdf_slice', fig, global_step=total_steps)
+        if wandb.run is not None:
+            wandb.log({prefix + 'xy_sdf_slice': wandb.Image(fig)})
 
-        min_max_summary(prefix + 'model_out_min_max', model_output['model_out'], total_steps, writer)
-        min_max_summary(prefix + 'coords', model_input['coords'], total_steps, writer)
+        min_max_summary(prefix + 'model_out_min_max', model_output['model_out'], total_steps)
+        min_max_summary(prefix + 'coords', model_input['coords'], total_steps)

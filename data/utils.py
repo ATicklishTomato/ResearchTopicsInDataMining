@@ -229,10 +229,7 @@ class ImplicitAudioWrapper(Dataset):
         data = torch.Tensor(data).view(-1, 1)
         return {'idx': idx, 'coords': self.grid}, {'func': data, 'rate': rate, 'scale': scale}
     
-def min_max_summary(name, tensor, total_steps, writer=None):
+def min_max_summary(name, tensor, total_steps):
     if wandb.run is not None:
         wandb.log({name + '_min': tensor.min().detach().cpu().numpy(),
                    name + '_max': tensor.max().detach().cpu().numpy()}, step=total_steps)
-    if writer:
-        writer.add_scalar(name + '_min', tensor.min().detach().cpu().numpy(), total_steps)
-        writer.add_scalar(name + '_max', tensor.max().detach().cpu().numpy(), total_steps)

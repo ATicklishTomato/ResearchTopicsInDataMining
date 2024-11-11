@@ -31,8 +31,8 @@ hidden_dimensions = {
     },
     'mfn': {
         'images': 16,
-        'shapes': 16
         'audio': 512,
+        'shapes': 16,
     },
     'fourier': {
         'images': 16,
@@ -108,7 +108,8 @@ def parse_args():
                         type=str,
                         choices=['images', 'audio', 'shapes'],
                         default='images',
-                        help='Type of data to train and test on. Default is images')
+                        help='Type of data to train and test on. Default is images. ' +
+                             'NOTE: shapes is only functional for SIREN models currently.')
     parser.add_argument('--data_point',
                         type=int,
                         default=0,
@@ -225,8 +226,8 @@ def get_configuration(args):
                 "in_features": 2,
                 "hidden_dim": hidden_dimensions[args.model][args.data],
                 "hidden_layers": hidden_layers[args.model][args.data],
-                "grid_size": grid_size[args.model][args.data],
-                "spline_order": spline_order[args.model][args.data]
+                "grid_size": grid_size[args.model][args.data] if args.model in ['kan', 'fkan'] else None,
+                "spline_order": spline_order[args.model][args.data] if args.model in ['kan', 'fkan'] else None
             }
         case "audio":
             from data.metrics import mean_squared_error
@@ -238,8 +239,8 @@ def get_configuration(args):
                 "in_features": 1,
                 "hidden_dim": hidden_dimensions[args.model][args.data],
                 "hidden_layers": hidden_layers[args.model][args.data],
-                "grid_size": grid_size[args.model][args.data],
-                "spline_order": spline_order[args.model][args.data]
+                "grid_size": grid_size[args.model][args.data] if args.model in ['kan', 'fkan'] else None,
+                "spline_order": spline_order[args.model][args.data] if args.model in ['kan', 'fkan'] else None
             }
         case "shapes":
             from data.metrics import sdf

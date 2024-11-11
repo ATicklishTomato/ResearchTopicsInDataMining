@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 
 from data import utils, metrics
 from data.audio.summary import audio_summary
-from data.shapes.meshing import create_mesh, create_mesh_with_pointcloud 
+from data.shapes.meshing import create_mesh_with_pointcloud
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ def test(model,
     logger.info(f"Testing {model.__class__.__name__}")
 
 
-    model.load_state_dict(torch.load('out/model_final.pth'))
+    model.load_state_dict(torch.load('out/model_final.pth', weights_only=False))
     model.to(device)
     model.eval()
 
@@ -31,10 +31,10 @@ def test(model,
                 ground_truth = {key: value.to(device) for key, value in ground_truth.items()}
                 model_output = model(model_input)
 
-                # losses = config["loss_fn"](model_output, ground_truth)
+                losses = config["loss_fn"](model_output, ground_truth)
 
                 if use_wandb:
-                    if config["datatype"] != "shaoes":
+                    if config["datatype"] != "shapes":
                         wandb.log({'total_loss': sum(losses.values()),
                                 "avg_loss": config["loss_fn"](model_output, ground_truth)['loss'].mean(),
                                 'psnr': metrics.peak_signal_to_noise_ratio(model_output, ground_truth)
@@ -90,6 +90,7 @@ def test(model,
                     audio_summary(model_input, ground_truth, model_output, None, prefix='test_')
 
     if config["datatype"] == "shapes":
-        create_mesh_with_pointcloud(model, 'bunny_reconstructed', N=800)
+        logger.info("Testing sdf reconstruction. This may take a while.")
+        create_mesh_with_pointcloud(model, './out/bunny_reconstructed', N=800)
 
     logger.info("Testing complete")

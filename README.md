@@ -8,38 +8,23 @@ Install the dependencies using the command `pip install -r requirements.txt`.
 ## Usage
 The code can be run through `run.py`. A series of arguments can be passed to the script to specify the model, dataset, and other parameters. The full help text is shown below. It can be accessed by running `python run.py -h` or `python run.py --help`.
 ```
-usage: run.py [-h]
-[--data {images}]
-[--data_point DATA_POINT]
-[--data_fidelity {low,medium,high}]
-[--model {siren,mfn,fourier,kan,basic}]
-[--sweep] 
-[--sweep_runs SWEEP_RUNS]
-[--epochs EPOCHS] 
-[--batch_size BATCH_SIZE]
-[--lr LR] 
-[--seed SEED]
-[--device DEVICE]
-[--verbose {10,20,30,40}]
-[--save]
-[--load] 
-[--save_dir SAVE_DIR] 
-[--skip_train] 
-[--skip_test]
-[--wandb_api_key WANDB_API_KEY]
+usage: run.py [-h] [--data {images,audio,shapes}] [--data_point DATA_POINT] [--data_fidelity {low,medium,high}] [--model {siren,mfn,fourier,kan,fkan}] [--sweep]
+              [--sweep_runs SWEEP_RUNS] [--epochs EPOCHS] [--batch_size BATCH_SIZE] [--lr LR] [--seed SEED] [--device DEVICE] [--verbose {10,20,30,40}] [--save] [--load]
+              [--skip_train] [--skip_test] [--wandb_api_key WANDB_API_KEY]
 
 Train and test a neural fields model on a chosen dataset with certain parameters
 
 options:
   -h, --help            show this help message and exit
-  --data {images}       Type of data to train and test on. Default is images
+  --data {images,audio,shapes}
+                        Type of data to train and test on. Default is images. NOTE: shapes is only functional for SIREN models currently.
   --data_point DATA_POINT
                         Choose the index of the data_point to train on.
   --data_fidelity {low,medium,high}
                         Choose the fidelity of the data point to train on.
-  --model {siren,mfn,fourier,kan,basic}
+  --model {siren,mfn,fourier,kan,fkan}
                         Type of model to use. Options are for SIREN, Multiplicative Filter Networks, Fourier Filter Banks, Kolmogorov-Arnold Networks, and a basic coordinate-   
-                        MLP, respectively. Default is basic
+                        MLP, respectively. Default is SIREN
   --sweep               Run a hyperparameter sweep. Default is False. Note: This will override any arguments passed related to sweep parameters
   --sweep_runs SWEEP_RUNS
                         Number of random runs to perform in the hyperparameter sweep. Default is 25

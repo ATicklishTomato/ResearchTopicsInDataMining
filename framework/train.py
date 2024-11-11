@@ -5,7 +5,6 @@ import numpy as np
 import os
 import logging
 import wandb
-from torch.utils.tensorboard import SummaryWriter
 
 from data import metrics
 
@@ -31,8 +30,6 @@ def train(
     if use_wandb:
         wandb.watch(model, log='all', log_freq=250)
         logger.info("Model watched by Weights and Biases")
-
-    writer = SummaryWriter(os.path.join('logs', 'summaries'))
 
     total_steps = 0
     with tqdm(total=len(dataloader) * epochs) as pbar:
@@ -62,7 +59,7 @@ def train(
                 losses = config["loss_fn"](model_output, ground_truth)
 
                 if use_wandb:
-                    if config["datatype"] != "sdf":
+                    if config["datatype"] != "shapes":
                         wandb.log({'total_loss': sum(losses.values()),
                                    "avg_loss": config["loss_fn"](model_output, ground_truth)['loss'],
                                    'psnr': metrics.peak_signal_to_noise_ratio(model_output, ground_truth)
@@ -103,7 +100,7 @@ def train(
                     )
                     wandb.save(os.path.join(wandb.run.dir, 'model_current.pth'))
                     if config["datatype"] == "shapes":
-                        config["summary_fn"](model, model_input, model_output, total_steps, writer)
+                        config["summary_fn"](model, model_input, model_output, total_steps)
                     elif config["datatype"] == "audio":
                         config["summary_fn"](model_input, ground_truth, model_output, total_steps)
                     else:
@@ -114,7 +111,7 @@ def train(
                         './out/model_current.pth'
                     )
                     if config["datatype"] == "shapes":
-                        config["summary_fn"](model, model_input, model_output, total_steps, writer)
+                        config["summary_fn"](model, model_input, model_output, total_steps)
                     elif config["datatype"] == "audio":
                         config["summary_fn"](model_input, ground_truth, model_output, total_steps)
                     else:

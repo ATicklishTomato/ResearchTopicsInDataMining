@@ -1,10 +1,9 @@
 import logging
 import numpy as np
-import plyfile
-import skimage.measure
 import time
 import torch
 
+logger = logging.getLogger(__name__)
 
 class SDFDecoder(torch.nn.Module):
     def __init__(self, model):
@@ -19,6 +18,7 @@ def create_mesh_with_pointcloud(
     model, filename, N=256, max_batch=64 ** 3, offset=None, scale=None, threshold=0.01
 ):
     start = time.time()
+    logger.info("Creating mesh for %s" % filename)
     pointcloud_filename = filename + ".xyz"
 
     decoder = SDFDecoder(model)
@@ -62,7 +62,7 @@ def create_mesh_with_pointcloud(
     sdf_values = sdf_values.reshape(N, N, N)
 
     end = time.time()
-    print("Sampling took: %f" % (end - start))
+    logger.info("Sampling took: %f" % (end - start))
 
     # Convert the SDF samples to a point cloud
     convert_sdf_samples_to_pointcloud(
@@ -89,6 +89,7 @@ def convert_sdf_samples_to_pointcloud(
     :param offset: Optional offset to apply to the point cloud coordinates.
     :param scale: Optional scale to apply to the point cloud coordinates.
     """
+    logger.info(f"Converting SDF samples to point cloud with normals and saving to {pointcloud_filename_out}")
     numpy_3d_sdf_tensor = pytorch_3d_sdf_tensor.numpy()
 
     # Find points where the SDF is close to zero (within a threshold)
@@ -117,4 +118,4 @@ def convert_sdf_samples_to_pointcloud(
         for point, normal in zip(points, normals):
             f.write(f"{point[0]} {point[1]} {point[2]} {normal[0]} {normal[1]} {normal[2]}\n")
 
-    print(f"Point cloud with normals saved as {pointcloud_filename_out}")
+    logger.info(f"Point cloud with normals saved as {pointcloud_filename_out}")
