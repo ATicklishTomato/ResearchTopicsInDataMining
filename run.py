@@ -27,27 +27,27 @@ hidden_dimensions = {
     'siren': {
         'images': 256,
         'audio': 512,
-        'sdf': 256
+        'shapes': 256
     },
     'mfn': {
         'images': 16,
         'audio': 512,
-        'sdf': 16
+        'shapes': 16,
     },
     'fourier': {
         'images': 16,
         'audio': 512,
-        'sdf': 16
+        'shapes': 16
     },
     'kan': {
         'images': [16, 16],
         'audio': [64,64],
-        'sdf': [16, 16]
+        'shapes': [16, 16]
     },
     'fkan': {
         'images': [16],
         'audio': [64,64],
-        'sdf': [16, 16]
+        'shapes': [16, 16]
     }
 
 }
@@ -56,27 +56,27 @@ hidden_layers = {
     'siren': {
         'images': 3,
         'audio': 4,
-        'sdf': 3
+        'shapes': 3
     },
     'mfn': {
         'images': 3,
         'audio': 3,
-        'sdf': 3
+        'shapes': 3
     },
     'fourier': {
         'images': 3,
         'audio': 3,
-        'sdf': 3
+        'shapes': 3
     },
     'kan': {
         'images': len(hidden_dimensions['kan']['images']),
         'audio': len(hidden_dimensions['kan']['audio']),
-        'sdf': len(hidden_dimensions['kan']['sdf'])
+        'shapes': len(hidden_dimensions['kan']['shapes'])
     },
     'fkan': {
         'images': len(hidden_dimensions['fkan']['images']),
         'audio': len(hidden_dimensions['fkan']['audio']),
-        'sdf': len(hidden_dimensions['fkan']['sdf'])
+        'shapes': len(hidden_dimensions['fkan']['shapes'])
     }
 }
 
@@ -106,9 +106,10 @@ def parse_args():
     parser = ArgumentParser(description='Train and test a neural fields model on a chosen dataset with certain parameters')
     parser.add_argument('--data',
                         type=str,
-                        choices=['images', 'audio', 'sdf'],
+                        choices=['images', 'audio', 'shapes'],
                         default='images',
-                        help='Type of data to train and test on. Default is images')
+                        help='Type of data to train and test on. Default is images. ' +
+                             'NOTE: shapes is only functional for SIREN models currently.')
     parser.add_argument('--data_point',
                         type=int,
                         default=0,
@@ -225,12 +226,12 @@ def get_configuration(args):
                 "in_features": 2,
                 "hidden_dim": hidden_dimensions[args.model][args.data],
                 "hidden_layers": hidden_layers[args.model][args.data],
-                "grid_size": grid_size[args.model][args.data],
-                "spline_order": spline_order[args.model][args.data]
+                "grid_size": grid_size[args.model][args.data] if args.model in ['kan', 'fkan'] else None,
+                "spline_order": spline_order[args.model][args.data] if args.model in ['kan', 'fkan'] else None
             }
         case "audio":
             from data.metrics import mean_squared_error
-            from data.audio.summary import audio_summary
+            from data import audio_summary
             return {
                 "datatype": "audio",
                 "loss_fn": mean_squared_error,
@@ -238,20 +239,20 @@ def get_configuration(args):
                 "in_features": 1,
                 "hidden_dim": hidden_dimensions[args.model][args.data],
                 "hidden_layers": hidden_layers[args.model][args.data],
-                "grid_size": grid_size[args.model][args.data],
-                "spline_order": spline_order[args.model][args.data]
+                "grid_size": grid_size[args.model][args.data] if args.model in ['kan', 'fkan'] else None,
+                "spline_order": spline_order[args.model][args.data] if args.model in ['kan', 'fkan'] else None
             }
-        case "sdf":
-            from data.metrics import sdf_loss
-            from data.sdf.summary import sdf_summary
+        case "shapes":
+            from data.metrics import sdf
+            from data import shape_summary
             return {
-                "datatype": "sdf",
-                "loss_fn": sdf_loss,
-                "summary_fn": sdf_summary,
+                "datatype": "shapes",
+                "loss_fn": sdf,
+                "summary_fn": shape_summary,
                 "in_features": 3,
-                "out_features": 1,
                 "hidden_dim": hidden_dimensions[args.model][args.data],
-                "hidden_layers": hidden_layers[args.model][args.data]
+                "hidden_layers": hidden_layers[args.model][args.data],
+                "clip_grad": True
             }
         case _:
             logger.error(f"Data {args.data} not recognized")
@@ -263,14 +264,14 @@ def get_model(args, dataloader, config):
             from models.mfn import GaborNet
             model = GaborNet(in_size=config["in_features"],
                              hidden_size=config["hidden_dim"],
-                             out_size=dataloader.dataset.dataset.output_dimensionality,
+                             out_size=dataloader.dataset.output_dimensionality,
                              n_layers=config["hidden_layers"],
                              input_scale=256,
                              weight_scale=1
                              )
         case ModelEnum.FFB.value:
             from models.NFFB.img.NFFB_2d import NFFB
-            model = NFFB(config["in_features"], dataloader.dataset.dataset.output_dimensionality)
+            model = NFFB(config["in_features"], dataloader.dataset.output_dimensionality)
         case ModelEnum.KAN.value:
             from models.kan import KAN
             model = KAN(layers_hidden=[config["in_features"],
@@ -289,9 +290,11 @@ def get_model(args, dataloader, config):
         case ModelEnum.SIREN.value:
             from models.siren import SIREN
             model = SIREN(in_features=config["in_features"],
-                          out_features=dataloader.dataset.dataset.output_dimensionality,
+                          out_features=dataloader.dataset.output_dimensionality,
                           hidden_features=config["hidden_dim"],
                           num_hidden_layers=config["hidden_layers"])
+            if config["datatype"] == "shapes":
+                model.clip_gradients = True 
         case _:
             logger.error(f"Model {args.model} not recognized")
             raise ValueError(f"Model {args.model} not recognized")

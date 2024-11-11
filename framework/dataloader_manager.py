@@ -5,7 +5,8 @@ from torch.utils.data import DataLoader
 
 from data.audio.reconstruction.dataset import Reconstruction as AudioReconstruction
 from data.images.reconstruction.dataset import Reconstruction as ImageReconstruction
-from data.utils import Implicit2DWrapper, ImplicitAudioWrapper, PointCloud
+from data.shapes.reconstruction.dataset import Reconstruction as ShapeReconstruction
+from data.utils import Implicit2DWrapper, ImplicitAudioWrapper
 
 logger = logging.getLogger(__name__)
 
@@ -56,28 +57,31 @@ def get_dataloader(args):
         else:
             logger.error(f"Data path {audio_file} does not exist.")
             raise FileNotFoundError(f"Data path {audio_file} does not exist.")
-    elif args.data == "sdf":
-        logger.debug(f"Getting dataloader for SDF data")
+    elif args.data == "shapes":
+        logger.debug(f"Getting dataloader for shapes data")
 
-        data_path = f"data/sdf/files/"
+        data_path = f"data/shapes/reconstruction/files/"
 
         if os.path.isdir(data_path):
-            # Sort the .NPY files in the data_path
-            sdf_files = sorted([f for f in os.listdir(data_path) if f.endswith(".xyz")])
+            # Sort the .xyz files in the data_path
+            shape_files = sorted([f for f in os.listdir(data_path) if f.endswith(".xyz")])
 
-            logger.debug(f"Found {len(sdf_files)} SDF files: {sdf_files}")
+            logger.debug(f"Found {len(shape_files)} shape files: {shape_files}")
 
             # Ensure there are enough files for the specified data_point
-            if args.data_point < len(sdf_files):
-                selected_sdf = sdf_files[args.data_point]
+            if args.data_point < len(shape_files):
+                selected_sdf = shape_files[args.data_point]
                 logger.info(f"Selected SDF file: {selected_sdf}")
             else:
-                # Choose the first SDF file
-                selected_sdf = sdf_files[0]
+                # Choose the first file
+                selected_sdf = shape_files[0]
 
-            sdf_dataset = PointCloud(os.path.join(data_path, selected_sdf), on_surface_points=args.batch_size)
+            sdf_dataset = ShapeReconstruction(
+                pointcloud_path=os.path.join(data_path, selected_sdf), 
+                on_surface_points=1500
+            )
 
-            logger.debug(f"Data point {args.data_point} selected, using SDF file {selected_sdf}")
+            logger.debug(f"Data point {args.data_point} selected, using shape file {selected_sdf}")
 
             return DataLoader(sdf_dataset, shuffle=True, batch_size=1, pin_memory=True, num_workers=0)
     else:

@@ -18,7 +18,7 @@ def train(
     config: dict,
     device,
     log_level,
-    use_wandb=False
+    use_wandb=False,
 ):
     # Set up logging, checkpoints and summaries
     logger.setLevel(log_level)
@@ -59,7 +59,7 @@ def train(
                 losses = config["loss_fn"](model_output, ground_truth)
 
                 if use_wandb:
-                    if config["datatype"] != "sdf":
+                    if config["datatype"] != "shapes":
                         wandb.log({'total_loss': sum(losses.values()),
                                    "avg_loss": config["loss_fn"](model_output, ground_truth)['loss'],
                                    'psnr': metrics.peak_signal_to_noise_ratio(model_output, ground_truth)
@@ -99,8 +99,8 @@ def train(
                         os.path.join(wandb.run.dir, 'model_current.pth')
                     )
                     wandb.save(os.path.join(wandb.run.dir, 'model_current.pth'))
-                    if config["datatype"] == "sdf":
-                        config["summary_fn"](model, model_input, total_steps)
+                    if config["datatype"] == "shapes":
+                        config["summary_fn"](model, model_input, model_output, total_steps)
                     elif config["datatype"] == "audio":
                         config["summary_fn"](model_input, ground_truth, model_output, total_steps)
                     else:
@@ -110,8 +110,8 @@ def train(
                         model.state_dict(),
                         './out/model_current.pth'
                     )
-                    if config["datatype"] == "sdf":
-                        config["summary_fn"](model, model_input, total_steps)
+                    if config["datatype"] == "shapes":
+                        config["summary_fn"](model, model_input, model_output, total_steps)
                     elif config["datatype"] == "audio":
                         config["summary_fn"](model_input, ground_truth, model_output, total_steps)
                     else:
@@ -122,9 +122,15 @@ def train(
                     pbar.close()
                     return
 
-                # Backpropagation
+                # Prepare the gradients
                 optimizer.zero_grad()
                 train_loss.backward()
+
+                # Clip the gradients if the model requests it
+                if getattr(model, "clip_gradients", False):
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.)
+
+                # Backpropagate
                 optimizer.step()
 
                 pbar.update(1)
